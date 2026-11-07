@@ -305,4 +305,31 @@ test.describe('Unified App Navigation Drawer & Dedicated /settings View', () => 
     await copyBtn.click();
     await expect(copyBtn.getByText(/Kopiert!/i)).toBeVisible();
   });
+
+  test('VenueModal bottom slider and drawers are intercepted by browser Back button without exiting app', async ({
+    page,
+  }) => {
+    await page.goto('/?matchId=9001');
+    await page.waitForLoadState('networkidle');
+
+    // 1. Venue bottom slider is pulled up because of matchId=9001
+    const venueModal = page.getByTestId('venue-modal');
+    await expect(venueModal).toBeVisible();
+
+    // 2. Simulate hardware / browser Back button
+    await page.goBack();
+
+    // Venue modal is dismissed back to the map view
+    await expect(venueModal).toBeHidden();
+    await expect(page).toHaveURL(/\//);
+
+    // 3. Open Navigation Drawer
+    await page.getByTestId('nav-menu-button').click();
+    const navDrawer = page.getByRole('dialog', { name: /Navigation & Menü|Navigation/i });
+    await expect(navDrawer).toBeVisible();
+
+    // 4. Press Back button while drawer is open
+    await page.goBack();
+    await expect(navDrawer).toBeHidden();
+  });
 });

@@ -74,6 +74,7 @@ export function VenueModal({
   return (
     <div
       role="dialog"
+      data-testid="venue-modal"
       aria-modal="true"
       aria-labelledby="venue-modal-title"
       className="fixed inset-0 z-50 flex flex-col justify-end md:justify-center md:items-center p-0 md:p-4 pointer-events-auto"
@@ -152,6 +153,7 @@ export function VenueModal({
             <button
               type="button"
               onClick={closeWithAnimation}
+              data-testid="venue-modal-close"
               className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
               aria-label="Schließen"
             >
@@ -203,6 +205,7 @@ export function VenueModal({
           <button
             type="button"
             onClick={closeWithAnimation}
+            data-testid="venue-modal-bottom-close"
             className="w-full rounded-xl border border-border/80 bg-muted/80 py-2.5 text-xs font-bold text-foreground hover:bg-muted transition"
           >
             Zurück zur Karte

@@ -38,6 +38,7 @@ import { useMatchFilters } from '@/lib/use-match-filters';
 import { useLeagues, useMatches } from '@/lib/use-matches';
 import { useServerHealth } from '@/lib/use-server-health';
 import { ThemeProvider, useOnlineStatus } from '@/hooks';
+import { RouterProvider, useOverlay, useRouter } from '@/router';
 
 interface MainViewProps {
   filterEngine: ReturnType<typeof useMatchFilters>;
@@ -60,11 +61,16 @@ function MainView({
 }: MainViewProps) {
   const isOnline = useOnlineStatus();
   const { filters, actions, query } = filterEngine;
+  const { route, closeOverlay } = useRouter();
 
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = React.useState<boolean>(false);
 
   // Selected match for map marker / multi-match venue overlay (supports deep link ?matchId=)
   const [selectedMatchId, setSelectedMatchId] = React.useState<number | null>(() => {
+    if (route.name === 'main' && route.matchId) {
+      return route.matchId;
+    }
+
     if (typeof window !== 'undefined') {
       const param = new URLSearchParams(window.location.search).get('matchId');
 
@@ -81,6 +87,36 @@ function MainView({
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
   const [kioskModalMatch, setKioskModalMatch] = React.useState<Match | null>(null);
   const [topMatchModalMatch, setTopMatchModalMatch] = React.useState<Match | null>(null);
+
+  // History-backed overlay dismissals (LIFO stack: Back button pops top overlay without exiting app)
+  useOverlay({
+    id: `venue-${selectedMatchId ?? 'none'}`,
+    type: 'venue',
+    isOpen: selectedMatchId !== null,
+    url: selectedMatchId ? `/?matchId=${selectedMatchId}` : undefined,
+    onClose: () => setSelectedMatchId(null),
+  });
+
+  useOverlay({
+    id: 'filter-drawer',
+    type: 'filter-drawer',
+    isOpen: isFilterDrawerOpen,
+    onClose: () => setIsFilterDrawerOpen(false),
+  });
+
+  useOverlay({
+    id: 'kiosk-modal',
+    type: 'kiosk-modal',
+    isOpen: kioskModalMatch !== null,
+    onClose: () => setKioskModalMatch(null),
+  });
+
+  useOverlay({
+    id: 'top-match-modal',
+    type: 'top-match-modal',
+    isOpen: topMatchModalMatch !== null,
+    onClose: () => setTopMatchModalMatch(null),
+  });
 
   const showToastMessage = React.useCallback((message: string) => {
     setToastMessage(message);
@@ -246,7 +282,7 @@ function MainView({
         {/* Canonical FilterBar: Bottom Bar (Docked Peek) + Mobile Sheet + Desktop Sidebar */}
         <FilterBar
           isOpen={isFilterDrawerOpen}
-          onClose={() => setIsFilterDrawerOpen(false)}
+          onClose={() => closeOverlay('filter-drawer')}
           filters={filters}
           availableOptions={{
             leagues,
@@ -290,7 +326,7 @@ function MainView({
               onSelectMatch={(matchId) => setSelectedMatchId(matchId)}
               onReportKioskInfo={(m) => setKioskModalMatch(m)}
               onOpenTopMatchInfo={(m) => setTopMatchModalMatch(m)}
-              onClose={() => setSelectedMatchId(null)}
+              onClose={() => closeOverlay(`venue-${selectedMatchId}`)}
             />
           </div>
         ) : (
@@ -404,7 +440,7 @@ function MainView({
       <KioskSubmissionModal
         match={kioskModalMatch}
         isOpen={kioskModalMatch !== null}
-        onClose={() => setKioskModalMatch(null)}
+        onClose={() => closeOverlay('kiosk-modal')}
         onSuccess={(msg) => {
           showToastMessage(msg);
           refetch();
@@ -415,7 +451,7 @@ function MainView({
       <TopMatchInfoModal
         match={topMatchModalMatch}
         isOpen={topMatchModalMatch !== null}
-        onClose={() => setTopMatchModalMatch(null)}
+        onClose={() => closeOverlay('top-match-modal')}
       />
 
       {/* PWA Install Banner */}
@@ -427,53 +463,19 @@ function MainView({
   );
 }
 
-function getMatchDetailIdFromPath(pathname: string): number | null {
-  const match = pathname.match(/^\/matches\/(\d+)(?:\/)?$/);
-
-  if (!match) {
-    return null;
-  }
-
-  const id = parseInt(match[1], 10);
-
-  return Number.isFinite(id) ? id : null;
-}
-
-function getStoryMatchIdFromPath(pathname: string): number | null {
-  const match = pathname.match(/^\/story\/(\d+)(?:\/)?$/);
-
-  if (!match) {
-    return null;
-  }
-
-  const id = parseInt(match[1], 10);
-
-  return Number.isFinite(id) ? id : null;
-}
-
-export function App() {
-  const [currentPath, setCurrentPath] = React.useState<string>(() => {
-    return typeof window !== 'undefined' ? window.location.pathname : '/';
-  });
-
-  React.useEffect(() => {
-    const handlePopState = () => {
-      setCurrentPath(window.location.pathname);
-    };
-
-    window.addEventListener('popstate', handlePopState);
-
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+function AppContent() {
+  const router = useRouter();
+  const { route, currentPath, navigate, back, closeOverlay } = router;
 
   const [isNavDrawerOpen, setIsNavDrawerOpen] = React.useState<boolean>(false);
 
-  const navigateTo = React.useCallback((path: string) => {
-    if (typeof window !== 'undefined') {
-      window.history.pushState({}, '', path);
-      setCurrentPath(path);
-    }
-  }, []);
+  // Intercept back button for global navigation drawer
+  useOverlay({
+    id: 'nav-drawer',
+    type: 'nav-drawer',
+    isOpen: isNavDrawerOpen,
+    onClose: () => setIsNavDrawerOpen(false),
+  });
 
   // Shared leagues and filter controller
   const {
@@ -487,15 +489,9 @@ export function App() {
   const { filters, actions } = filterEngine;
   const { lastSyncedAt } = useServerHealth();
 
-  const isAdminRoute = currentPath.startsWith('/admin');
-  const isSettingsRoute = currentPath === '/settings' || currentPath.startsWith('/settings');
-  const storyMatchId = getStoryMatchIdFromPath(currentPath);
-  const isStoryHubRoute = currentPath.startsWith('/story') || currentPath.startsWith('/creator');
-  const matchDetailId = getMatchDetailIdFromPath(currentPath);
-
   let content: React.ReactNode;
 
-  if (isAdminRoute) {
+  if (route.name === 'admin') {
     const isAdminEnabled = import.meta.env.VITE_ENABLE_ADMIN_UI === 'true';
 
     if (!isAdminEnabled) {
@@ -511,11 +507,11 @@ export function App() {
       content = (
         <AdminDashboard
           onOpenNav={() => setIsNavDrawerOpen(true)}
-          onNavigateHome={() => navigateTo('/')}
+          onNavigateHome={() => navigate('/')}
         />
       );
     }
-  } else if (isSettingsRoute) {
+  } else if (route.name === 'settings') {
     content = (
       <SettingsView
         showRadiusCircle={filters.showRadiusCircle}
@@ -525,38 +521,47 @@ export function App() {
         lastSyncedAt={lastSyncedAt}
         radiusKm={filters.radiusKm}
         locationName={filters.location.name}
-        onNavigateHome={() => navigateTo('/')}
-        onBack={() => navigateTo('/')}
+        onNavigateHome={() => navigate('/')}
+        onBack={() => navigate('/')}
         onOpenNav={() => setIsNavDrawerOpen(true)}
       />
     );
-  } else if (storyMatchId !== null) {
+  } else if (route.name === 'story-match') {
     content = (
       <StoryMatchRouteContainer
-        matchId={storyMatchId}
+        matchId={route.matchId}
         onBack={() => {
           if (typeof window !== 'undefined' && window.history.length > 1) {
-            window.history.back();
+            back();
           } else {
-            navigateTo('/story');
+            navigate('/story');
           }
         }}
       />
     );
-  } else if (isStoryHubRoute) {
+  } else if (route.name === 'story-hub') {
     content = (
       <ClubStoryHub
-        onNavigateHome={() => navigateTo('/')}
+        onNavigateHome={() => navigate('/')}
         onOpenNav={() => setIsNavDrawerOpen(true)}
       />
     );
-  } else if (matchDetailId !== null) {
+  } else if (route.name === 'match-detail') {
     content = (
       <MatchDetailView
-        matchId={matchDetailId}
-        onNavigateHome={() => navigateTo('/')}
+        matchId={route.matchId}
+        onNavigateHome={() => navigate('/')}
         onOpenNav={() => setIsNavDrawerOpen(true)}
       />
+    );
+  } else if (route.name === 'not-found') {
+    content = (
+      <div className="flex h-dvh w-full flex-col items-center justify-center bg-background px-4 text-center text-foreground">
+        <h1 className="text-4xl font-extrabold tracking-tight">404</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Diese Seite konnte nicht gefunden werden.
+        </p>
+      </div>
     );
   } else {
     content = (
@@ -573,13 +578,13 @@ export function App() {
   }
 
   return (
-    <ThemeProvider>
+    <>
       {content}
 
       {/* Global Slide-over Navigation Drawer */}
       <NavigationDrawer
         isOpen={isNavDrawerOpen}
-        onClose={() => setIsNavDrawerOpen(false)}
+        onClose={() => closeOverlay('nav-drawer')}
         currentPath={currentPath}
         viewMode={filters.viewMode}
         onNavigate={(path, options) => {
@@ -587,10 +592,21 @@ export function App() {
             actions.setViewMode(options.viewMode);
           }
 
-          navigateTo(path);
+          setIsNavDrawerOpen(false);
+          navigate(path);
         }}
         lastSyncedAt={lastSyncedAt}
       />
+    </>
+  );
+}
+
+export function App() {
+  return (
+    <ThemeProvider>
+      <RouterProvider>
+        <AppContent />
+      </RouterProvider>
     </ThemeProvider>
   );
 }

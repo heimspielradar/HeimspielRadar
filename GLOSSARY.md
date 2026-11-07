@@ -46,3 +46,7 @@ _Avoid_: Map wrapper, test map, map fork
 
 **useMapViewModel**:
 The deep module hook encapsulating coordinate validation, venue deduplication, Mercator clustering, search radius GeoJSON generation, and bounding-box calculations for the map view adapter.
+
+**AppRouter**:
+The deep module encapsulating declarative route matching, URL parsing, browser history synchronization, and LIFO overlay stack management (sheet and modal dismissal).
+_Avoid_: Route wrapper, custom popstate handler, window.location router
