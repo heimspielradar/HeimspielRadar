@@ -21,6 +21,9 @@
       "@sundayleague/shared-types": [
         "./libs/shared-types/src/index.ts"
       ],
+      "@heimspielradar/shared-types": [
+        "./libs/shared-types/src/index.ts"
+      ],
       "@/*": [
         "./apps/frontend/src/*"
       ]

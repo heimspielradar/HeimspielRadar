@@ -1,0 +1,10 @@
+{
+  "name": "@heimspielradar/shared-types",
+  "version": "0.1.0",
+  "private": false,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "publishConfig": {
+    "access": "public"
+  }
+}
