@@ -173,7 +173,7 @@ async function captureView(browser, {
 
     await page.screenshot({
       path: outputPath,
-      animations: 'disabled',
+      animations: 'allow',
       timeout: 10000,
     });
   } finally {

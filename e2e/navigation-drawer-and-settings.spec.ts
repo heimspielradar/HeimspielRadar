@@ -94,13 +94,19 @@ test.describe('Unified App Navigation Drawer & Dedicated /settings View', () => 
     await expect(drawer).toBeVisible();
 
     // Verify nav items
+    await expect(drawer.getByText('Spieltagsradar')).toBeVisible();
+    await expect(drawer.getByText(/Hallenkarte & Spieleliste/i)).toBeVisible();
     await expect(page.getByTestId('nav-item-map')).toBeVisible();
     await expect(page.getByTestId('nav-item-list')).toBeVisible();
     await expect(page.getByTestId('nav-item-story')).toBeVisible();
     await expect(page.getByTestId('nav-item-settings')).toBeVisible();
+    await expect(drawer.getByText(/Ansichten, Benachrichtigungen & Cache/i)).toBeVisible();
 
     // Verify donation link
     await expect(drawer.getByText(/Hallenkaffee spendieren/i)).toBeVisible();
+
+    // Verify dynamic frontend version footer (v0.1.x instead of hardcoded v1.0)
+    await expect(drawer.getByText(/v0\.1\./i)).toBeVisible();
 
     // Verify close via X button
     const closeBtn = page.getByTestId('nav-drawer-close');
