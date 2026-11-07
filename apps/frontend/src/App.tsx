@@ -373,7 +373,7 @@ function MainView({
                 selectedMatchId={selectedMatchId}
                 onSelectMatch={(match) => {
                   setSelectedMatchId(match.id);
-                  actions.setViewMode('map');
+                  actions.setFilters({ viewMode: 'map' });
                 }}
                 isLoading={isLoading}
                 radiusKm={filters.radiusKm}
@@ -448,9 +448,11 @@ function AppContent() {
         currentPath={route.path}
         onNavigate={(path) => navigate(path)}
         showRadiusCircle={filters.showRadiusCircle}
-        onToggleRadiusCircle={actions.setShowRadiusCircle}
+        onToggleRadiusCircle={(show) =>
+          actions.setFilters({ showRadiusCircle: show })
+        }
         viewMode={filters.viewMode}
-        onViewModeChange={actions.setViewMode}
+        onViewModeChange={(mode) => actions.setFilters({ viewMode: mode })}
         lastSyncedAt={lastSyncedAt}
         radiusKm={filters.radiusKm}
         locationName={filters.location.name}
@@ -528,7 +530,7 @@ function AppContent() {
         viewMode={filters.viewMode}
         onNavigate={(path, options) => {
           if (options?.viewMode) {
-            actions.setViewMode(options.viewMode);
+            actions.setFilters({ viewMode: options.viewMode });
           }
 
           setIsNavDrawerOpen(false);

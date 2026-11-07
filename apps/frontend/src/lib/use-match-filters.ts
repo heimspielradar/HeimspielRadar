@@ -88,24 +88,20 @@ export interface MatchFiltersState extends PersistedFilterState {
   query: NearbyMatchesQuery;
 }
 
+export type MatchFiltersPatch = Partial<PersistedFilterState> & {
+  dateFrom?: string;
+  dateTo?: string;
+};
+
+export type MatchFiltersUpdater =
+  | MatchFiltersPatch
+  | ((prev: PersistedFilterState) => MatchFiltersPatch);
+
 export interface MatchFiltersActions {
-  setViewMode: (mode: ViewMode) => void;
-  setLocation: (location: LocationReference) => void;
-  setRadius: (radiusKm: number) => void;
-  setShowRadiusCircle: (show: boolean) => void;
-  setDateMode: (mode: DateFilterMode) => void;
-  setDateRange: (dateFrom: string, dateTo: string) => void;
-  setOnlyUpcoming: (onlyUpcoming: boolean) => void;
-  setTeamQuery: (teamQuery?: string) => void;
-  setGenders: (genders: string[]) => void;
-  setAgeClasses: (ageClasses: string[]) => void;
-  setSkillLevels: (skillLevels: string[]) => void;
-  setLeagueIds: (leagueIds: number[]) => void;
+  setFilters: (patch: MatchFiltersUpdater) => void;
   resetFilters: () => void;
   expandRadius: (increment?: number) => void;
   locateUser: () => Promise<LocationReference | null>;
-  requestLocation: () => Promise<LocationReference | null>;
-  setAvailableLeagues: (leagues: League[]) => void;
 }
 
 export interface MatchFiltersStorage {
@@ -643,6 +639,62 @@ class InMemoryStorage implements MatchFiltersStorage {
   }
 }
 
+function arraysEqual<T>(a: T[], b: T[]): boolean {
+  if (a === b) {
+    return true;
+  }
+
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function hasFiltersChanged(
+  prev: PersistedFilterState,
+  next: PersistedFilterState,
+): boolean {
+  if (
+    prev.viewMode !== next.viewMode ||
+    prev.radiusKm !== next.radiusKm ||
+    prev.showRadiusCircle !== next.showRadiusCircle ||
+    prev.dateMode !== next.dateMode ||
+    prev.customDate !== next.customDate ||
+    prev.customDateFrom !== next.customDateFrom ||
+    prev.customDateTo !== next.customDateTo ||
+    prev.onlyUpcoming !== next.onlyUpcoming ||
+    prev.teamQuery !== next.teamQuery
+  ) {
+    return true;
+  }
+
+  if (
+    prev.location.lat !== next.location.lat ||
+    prev.location.lng !== next.location.lng ||
+    prev.location.name !== next.location.name
+  ) {
+    return true;
+  }
+
+  if (
+    !arraysEqual(prev.genders, next.genders) ||
+    !arraysEqual(prev.ageClasses, next.ageClasses) ||
+    !arraysEqual(prev.skillLevels, next.skillLevels) ||
+    !arraysEqual(prev.leagueIds, next.leagueIds)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 export class MatchFiltersController {
   private persisted: PersistedFilterState;
   private isLocating = false;
@@ -855,148 +907,196 @@ export class MatchFiltersController {
     }
   };
 
-  readonly actions: MatchFiltersActions = {
-    setViewMode: (mode: ViewMode) => {
-      this.persisted.viewMode = mode;
-      this.saveAndNotify();
-    },
+  setFilters = (patch: MatchFiltersUpdater): void => {
+    const resolvedPatch =
+      patch instanceof Function ? patch({ ...this.persisted }) : patch;
 
-    setLocation: (loc: LocationReference) => {
-      this.persisted.location = loc;
-      this.saveAndNotify();
-    },
+    if (!resolvedPatch) {
+      return;
+    }
 
-    setRadius: (radiusKm: number) => {
-      const clamped = Math.max(5, Math.min(50, radiusKm));
-      this.persisted.radiusKm = clamped;
-      this.saveAndNotify();
-    },
+    const next: PersistedFilterState = {
+      ...this.persisted,
+      location: { ...this.persisted.location },
+      genders: [...this.persisted.genders],
+      ageClasses: [...this.persisted.ageClasses],
+      skillLevels: [...this.persisted.skillLevels],
+      leagueIds: [...this.persisted.leagueIds],
+    };
 
-    setShowRadiusCircle: (show: boolean) => {
-      this.persisted.showRadiusCircle = show;
-      this.saveAndNotify();
-    },
+    if (
+      resolvedPatch.viewMode !== undefined &&
+      isViewMode(resolvedPatch.viewMode)
+    ) {
+      next.viewMode = resolvedPatch.viewMode;
+    }
 
-    setDateMode: (mode: DateFilterMode) => {
-      const resolved = resolveDateRange(
-        mode,
-        this.persisted.customDateFrom,
-        this.persisted.customDateTo,
-        this.getNow(),
-      );
+    if (resolvedPatch.location !== undefined) {
+      next.location = parseLocation(resolvedPatch.location);
+    }
 
-      this.persisted.dateMode = mode;
-      this.persisted.customDateFrom = resolved.dateFrom;
-      this.persisted.customDateTo = resolved.dateTo;
-      this.persisted.customDate = resolved.dateFrom || undefined;
-      this.saveAndNotify();
-    },
+    if (resolvedPatch.radiusKm !== undefined) {
+      const rawRadius = Number(resolvedPatch.radiusKm);
 
-    setDateRange: (from: string, to: string) => {
-      if (!from && !to) {
-        this.persisted.dateMode = 'all';
-        this.persisted.customDateFrom = '';
-        this.persisted.customDateTo = '';
-        this.persisted.customDate = undefined;
-        this.saveAndNotify();
-
-        return;
+      if (Number.isFinite(rawRadius)) {
+        next.radiusKm = Math.max(5, Math.min(50, rawRadius));
       }
+    }
 
-      this.persisted.dateMode = 'custom';
-      this.persisted.customDateFrom = from;
-      this.persisted.customDateTo = to;
-      this.persisted.customDate = from || undefined;
-      this.saveAndNotify();
-    },
+    if (resolvedPatch.showRadiusCircle !== undefined) {
+      next.showRadiusCircle = resolvedPatch.showRadiusCircle === true;
+    }
 
-    setOnlyUpcoming: (onlyUpcoming: boolean) => {
-      this.persisted.onlyUpcoming = onlyUpcoming;
-      this.saveAndNotify();
-    },
+    if (resolvedPatch.onlyUpcoming !== undefined) {
+      next.onlyUpcoming = resolvedPatch.onlyUpcoming === true;
+    }
 
-    setTeamQuery: (teamQuery?: string) => {
-      const trimmed = teamQuery?.trim();
+    if ('teamQuery' in resolvedPatch) {
+      if (
+        resolvedPatch.teamQuery === null ||
+        resolvedPatch.teamQuery === undefined
+      ) {
+        next.teamQuery = undefined;
+      } else {
+        const trimmed = String(resolvedPatch.teamQuery).trim();
 
-      this.persisted.teamQuery = trimmed && trimmed.length > 0 ? trimmed : undefined;
-      this.saveAndNotify();
-    },
+        next.teamQuery = trimmed.length > 0 ? trimmed : undefined;
+      }
+    }
 
-    setGenders: (genders: string[]) => {
-      this.persisted.genders = genders;
-      this.persisted.leagueIds = cascadeLeagueIds(
-        this.persisted.leagueIds,
-        this.leagues,
-        {
-          genders,
-          ageClasses: this.persisted.ageClasses,
-          skillLevels: this.persisted.skillLevels,
-        },
+    if (resolvedPatch.genders !== undefined) {
+      next.genders = Array.from(
+        new Set(resolvedPatch.genders.map((g) => String(g)).filter(Boolean)),
       );
-      this.saveAndNotify();
-    },
+    }
 
-    setAgeClasses: (ageClasses: string[]) => {
-      this.persisted.ageClasses = ageClasses;
-      this.persisted.leagueIds = cascadeLeagueIds(
-        this.persisted.leagueIds,
-        this.leagues,
-        {
-          genders: this.persisted.genders,
-          ageClasses,
-          skillLevels: this.persisted.skillLevels,
-        },
+    if (resolvedPatch.ageClasses !== undefined) {
+      next.ageClasses = Array.from(
+        new Set(resolvedPatch.ageClasses.map((a) => String(a)).filter(Boolean)),
       );
-      this.saveAndNotify();
-    },
+    }
 
-    setSkillLevels: (skillLevels: string[]) => {
-      this.persisted.skillLevels = skillLevels;
-      this.persisted.leagueIds = cascadeLeagueIds(
-        this.persisted.leagueIds,
-        this.leagues,
-        {
-          genders: this.persisted.genders,
-          ageClasses: this.persisted.ageClasses,
-          skillLevels,
-        },
+    if (resolvedPatch.skillLevels !== undefined) {
+      next.skillLevels = Array.from(
+        new Set(resolvedPatch.skillLevels.map((s) => String(s)).filter(Boolean)),
       );
-      this.saveAndNotify();
-    },
+    }
 
-    setLeagueIds: (leagueIds: number[]) => {
-      this.persisted.leagueIds = cascadeLeagueIds(
-        leagueIds,
-        this.leagues,
-        {
-          genders: this.persisted.genders,
-          ageClasses: this.persisted.ageClasses,
-          skillLevels: this.persisted.skillLevels,
-        },
+    if (resolvedPatch.leagueIds !== undefined) {
+      next.leagueIds = Array.from(
+        new Set(
+          resolvedPatch.leagueIds
+            .map((id) => Number(id))
+            .filter((num) => Number.isFinite(num)),
+        ),
       );
-      this.saveAndNotify();
+    }
+
+    const hasExplicitPreset =
+      resolvedPatch.dateMode &&
+      resolvedPatch.dateMode !== 'custom' &&
+      isDateMode(resolvedPatch.dateMode);
+
+    if (hasExplicitPreset) {
+      // SAFETY: hasExplicitPreset verified isDateMode(resolvedPatch.dateMode)
+      const dateMode = resolvedPatch.dateMode as DateFilterMode;
+      const resolved = resolveDateRange(dateMode, '', '', this.getNow());
+
+      next.dateMode = dateMode;
+      next.customDateFrom = resolved.dateFrom;
+      next.customDateTo = resolved.dateTo;
+      next.customDate = resolved.dateFrom || undefined;
+    } else if (
+      resolvedPatch.dateFrom !== undefined ||
+      resolvedPatch.dateTo !== undefined ||
+      resolvedPatch.customDateFrom !== undefined ||
+      resolvedPatch.customDateTo !== undefined ||
+      resolvedPatch.customDate !== undefined ||
+      resolvedPatch.dateMode === 'custom'
+    ) {
+      const rawCustom =
+        resolvedPatch.customDate && String(resolvedPatch.customDate).length > 0
+          ? String(resolvedPatch.customDate)
+          : '';
+
+      const effFrom =
+        resolvedPatch.dateFrom !== undefined
+          ? resolvedPatch.dateFrom
+          : (resolvedPatch.customDateFrom !== undefined
+              ? resolvedPatch.customDateFrom
+              : (rawCustom || next.customDateFrom));
+
+      const effTo =
+        resolvedPatch.dateTo !== undefined
+          ? resolvedPatch.dateTo
+          : (resolvedPatch.customDateTo !== undefined
+              ? resolvedPatch.customDateTo
+              : (rawCustom || next.customDateTo));
+
+      if (!effFrom && !effTo) {
+        next.dateMode = 'all';
+        next.customDateFrom = '';
+        next.customDateTo = '';
+        next.customDate = resolvedPatch.customDate === null ? null : undefined;
+      } else {
+        next.dateMode = 'custom';
+        next.customDateFrom = effFrom;
+        next.customDateTo = effTo;
+        next.customDate =
+          resolvedPatch.customDate === null ? null : (effFrom || undefined);
+      }
+    }
+
+    const hasHierarchyChange =
+      resolvedPatch.genders !== undefined ||
+      resolvedPatch.ageClasses !== undefined ||
+      resolvedPatch.skillLevels !== undefined ||
+      resolvedPatch.leagueIds !== undefined;
+
+    if (hasHierarchyChange) {
+      next.leagueIds = cascadeLeagueIds(next.leagueIds, this.leagues, {
+        genders: next.genders,
+        ageClasses: next.ageClasses,
+        skillLevels: next.skillLevels,
+      });
+    }
+
+    if (!hasFiltersChanged(this.persisted, next)) {
+      return;
+    }
+
+    this.persisted = next;
+    this.saveAndNotify();
+  };
+
+  resetFilters = (): void => {
+    this.persisted = {
+      ...cloneDefaultFilterState(),
+      viewMode: this.persisted.viewMode,
+    };
+    this.saveAndNotify();
+  };
+
+  expandRadius = (increment = 15): void => {
+    this.setFilters((prev) => ({
+      radiusKm: Math.min(50, prev.radiusKm + increment),
+    }));
+  };
+
+  readonly actions: MatchFiltersActions = {
+    setFilters: (patch: MatchFiltersUpdater) => {
+      this.setFilters(patch);
     },
 
     resetFilters: () => {
-      this.persisted = {
-        ...cloneDefaultFilterState(),
-        viewMode: this.persisted.viewMode,
-      };
-      this.saveAndNotify();
+      this.resetFilters();
     },
 
-    expandRadius: (increment = 15) => {
-      this.persisted.radiusKm = Math.min(50, this.persisted.radiusKm + increment);
-      this.saveAndNotify();
+    expandRadius: (increment?: number) => {
+      this.expandRadius(increment);
     },
 
     locateUser: () => this.locateUser(),
-
-    requestLocation: () => this.locateUser(),
-
-    setAvailableLeagues: (leagues: League[]) => {
-      this.setAvailableLeagues(leagues);
-    },
   };
 }
 

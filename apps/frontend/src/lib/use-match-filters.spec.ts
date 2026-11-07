@@ -12,12 +12,14 @@ import {
 
 class MockStorage implements MatchFiltersStorage {
   private data = new Map<string, string>();
+  public setItemCalls: Array<{ key: string; value: string }> = [];
 
   getItem(key: string): string | null {
     return this.data.get(key) ?? null;
   }
 
   setItem(key: string, value: string): void {
+    this.setItemCalls.push({ key, value });
     this.data.set(key, value);
   }
 
@@ -75,7 +77,7 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setDateMode('today');
+      controller.actions.setFilters({ dateMode: 'today' });
       const state = controller.getState();
 
       expect(state.dateMode).toBe('today');
@@ -91,7 +93,7 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setDateMode('tomorrow');
+      controller.actions.setFilters({ dateMode: 'tomorrow' });
       const state = controller.getState();
 
       expect(state.dateMode).toBe('tomorrow');
@@ -107,7 +109,7 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setDateMode('weekend');
+      controller.actions.setFilters({ dateMode: 'weekend' });
       const state = controller.getState();
 
       expect(state.dateMode).toBe('weekend');
@@ -123,7 +125,7 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setDateMode('next-weekend');
+      controller.actions.setFilters({ dateMode: 'next-weekend' });
       const state = controller.getState();
 
       expect(state.dateMode).toBe('next-weekend');
@@ -139,7 +141,7 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setDateMode('weekend-after-next');
+      controller.actions.setFilters({ dateMode: 'weekend-after-next' });
       const state = controller.getState();
 
       expect(state.dateMode).toBe('weekend-after-next');
@@ -155,7 +157,7 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setDateMode('all');
+      controller.actions.setFilters({ dateMode: 'all' });
       const state = controller.getState();
 
       expect(state.dateMode).toBe('all');
@@ -164,7 +166,7 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
       expect(state.dateRangeDisplay).toBe('Alle Termine');
     });
 
-    it('resolves custom date range via setDateRange', () => {
+    it('resolves custom date range via setFilters({ dateFrom, dateTo })', () => {
       const storage = new MockStorage();
 
       const controller = createMatchFilters({
@@ -172,7 +174,10 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setDateRange('2026-11-15', '2026-11-20');
+      controller.actions.setFilters({
+        dateFrom: '2026-11-15',
+        dateTo: '2026-11-20',
+      });
       const state = controller.getState();
 
       expect(state.dateMode).toBe('custom');
@@ -267,11 +272,11 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
       });
 
       // Select all 4 leagues: 101 (männlich), 102 (weiblich), 103 (männlich), 104 (mixed)
-      controller.actions.setLeagueIds([101, 102, 103, 104]);
+      controller.actions.setFilters({ leagueIds: [101, 102, 103, 104] });
       expect(controller.getState().leagueIds).toEqual([101, 102, 103, 104]);
 
       // Narrow gender to 'männlich'
-      controller.actions.setGenders(['männlich']);
+      controller.actions.setFilters({ genders: ['männlich'] });
       const state = controller.getState();
 
       expect(state.genders).toEqual(['männlich']);
@@ -288,8 +293,8 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setLeagueIds([101, 103]);
-      controller.actions.setAgeClasses(['U18']);
+      controller.actions.setFilters({ leagueIds: [101, 103] });
+      controller.actions.setFilters({ ageClasses: ['U18'] });
       const state = controller.getState();
 
       expect(state.ageClasses).toEqual(['U18']);
@@ -306,8 +311,8 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setLeagueIds([101, 102]);
-      controller.actions.setSkillLevels(['Landesliga']);
+      controller.actions.setFilters({ leagueIds: [101, 102] });
+      controller.actions.setFilters({ skillLevels: ['Landesliga'] });
       const state = controller.getState();
 
       expect(state.skillLevels).toEqual(['Landesliga']);
@@ -323,14 +328,14 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setGenders(['weiblich']);
-      controller.actions.setLeagueIds([101, 102, 103]);
+      controller.actions.setFilters({ genders: ['weiblich'] });
+      controller.actions.setFilters({ leagueIds: [101, 102, 103] });
 
       // At this point leagues are empty, so leagueIds stay [101, 102, 103]
       expect(controller.getState().leagueIds).toEqual([101, 102, 103]);
 
       // Dynamically load leagues
-      controller.actions.setAvailableLeagues(MOCK_LEAGUES);
+      controller.setAvailableLeagues(MOCK_LEAGUES);
 
       // Now 101 and 103 are pruned because they are männlich, not weiblich
       expect(controller.getState().leagueIds).toEqual([102]);
@@ -345,7 +350,7 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setGenders(['männlich']);
+      controller.actions.setFilters({ genders: ['männlich'] });
       const filtered = controller.getFilteredLeagues('U18');
 
       expect(filtered.length).toBe(1);
@@ -362,9 +367,11 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setRadius(45);
-      controller.actions.setShowRadiusCircle(false);
-      controller.actions.setOnlyUpcoming(false);
+      controller.actions.setFilters({
+        radiusKm: 45,
+        showRadiusCircle: false,
+        onlyUpcoming: false,
+      });
 
       const raw = storage.getItem(FILTER_STORAGE_KEY);
       expect(raw).not.toBeNull();
@@ -398,10 +405,10 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
       expect(controller.getState().radiusKm).toBe(30);
 
       // Clamping via actions
-      controller.actions.setRadius(2);
+      controller.actions.setFilters({ radiusKm: 2 });
       expect(controller.getState().radiusKm).toBe(5);
 
-      controller.actions.setRadius(85);
+      controller.actions.setFilters({ radiusKm: 85 });
       expect(controller.getState().radiusKm).toBe(50);
     });
 
@@ -429,9 +436,11 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setViewMode('list');
-      controller.actions.setRadius(40);
-      controller.actions.setGenders(['männlich']);
+      controller.actions.setFilters({
+        viewMode: 'list',
+        radiusKm: 40,
+        genders: ['männlich'],
+      });
 
       controller.actions.resetFilters();
       const state = controller.getState();
@@ -515,7 +524,7 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
       expect(result.filters).toBeDefined();
       expect(result.actions).toBeDefined();
 
-      result.actions.setDateMode('tomorrow');
+      result.actions.setFilters({ dateMode: 'tomorrow' });
       const updated = result.controller.getState();
 
       expect(updated.dateMode).toBe('tomorrow');
@@ -530,7 +539,7 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setRadius(25);
+      controller.actions.setFilters({ radiusKm: 25 });
       expect(controller.getState().radiusKm).toBe(25);
     });
   });
@@ -547,11 +556,11 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
       expect(controller.getState().teamQuery).toBeUndefined();
       expect(controller.getState().activeFilterCount).toBe(0);
 
-      controller.actions.setTeamQuery('SV Pfrondorf');
+      controller.actions.setFilters({ teamQuery: 'SV Pfrondorf' });
       expect(controller.getState().teamQuery).toBe('SV Pfrondorf');
       expect(controller.getState().activeFilterCount).toBe(1);
 
-      controller.actions.setTeamQuery(undefined);
+      controller.actions.setFilters({ teamQuery: undefined });
       expect(controller.getState().teamQuery).toBeUndefined();
       expect(controller.getState().activeFilterCount).toBe(0);
     });
@@ -564,7 +573,7 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller1.actions.setTeamQuery('TSG Reutlingen');
+      controller1.actions.setFilters({ teamQuery: 'TSG Reutlingen' });
 
       const controller2 = createMatchFilters({
         storage,
@@ -582,7 +591,7 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setTeamQuery('SV 03 Tübingen');
+      controller.actions.setFilters({ teamQuery: 'SV 03 Tübingen' });
       expect(controller.getState().teamQuery).toBe('SV 03 Tübingen');
 
       controller.actions.resetFilters();
@@ -629,7 +638,7 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setDateMode('today');
+      controller.actions.setFilters({ dateMode: 'today' });
       const { query } = controller;
 
       expect(query.date).toBe('2026-10-21');
@@ -646,13 +655,15 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         leagues: MOCK_LEAGUES,
       });
 
-      controller.actions.setGenders(['männlich']);
-      controller.actions.setAgeClasses(['Senioren']);
-      controller.actions.setSkillLevels(['Oberliga']);
-      controller.actions.setLeagueIds([101]);
-      controller.actions.setTeamQuery('  TSG Reutlingen  ');
-      controller.actions.setRadius(45);
-      controller.actions.setOnlyUpcoming(false);
+      controller.actions.setFilters({
+        genders: ['männlich'],
+        ageClasses: ['Senioren'],
+        skillLevels: ['Oberliga'],
+        leagueIds: [101],
+        teamQuery: '  TSG Reutlingen  ',
+        radiusKm: 45,
+        onlyUpcoming: false,
+      });
 
       const query = controller.getQuery();
 
@@ -676,8 +687,10 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         now: nowFn,
       });
 
-      controller.actions.setTeamQuery('SV Pfrondorf');
-      controller.actions.setRadius(50);
+      controller.actions.setFilters({
+        teamQuery: 'SV Pfrondorf',
+        radiusKm: 50,
+      });
       expect(controller.query.teamQuery).toBe('SV Pfrondorf');
       expect(controller.query.radiusKm).toBe(50);
 
@@ -808,6 +821,194 @@ describe('useMatchFilters & MatchFiltersController (Headless Unit Tests)', () =>
         expect(state.dateFrom).toBe('2026-10-24');
         expect(state.dateTo).toBe('2026-10-25');
       });
+    });
+  });
+
+  describe('8. Atomic Patch Semantics (setFilters & MatchFiltersActions)', () => {
+    it('executes multi-property updates in a single pass with exactly one storage write and one notification', () => {
+      const storage = new MockStorage();
+
+      const controller = createMatchFilters({
+        storage,
+        now: nowFn,
+      });
+
+      let notificationCount = 0;
+
+      controller.subscribe(() => {
+        notificationCount += 1;
+      });
+
+      storage.setItemCalls = [];
+
+      controller.actions.setFilters({
+        radiusKm: 45,
+        dateMode: 'today',
+        onlyUpcoming: false,
+        teamQuery: 'TSG Reutlingen',
+      });
+
+      expect(notificationCount).toBe(1);
+      expect(storage.setItemCalls.length).toBe(1);
+
+      const state = controller.getState();
+
+      expect(state.radiusKm).toBe(45);
+      expect(state.dateMode).toBe('today');
+      expect(state.onlyUpcoming).toBe(false);
+      expect(state.teamQuery).toBe('TSG Reutlingen');
+    });
+
+    it('detects no-op patches and skips storage writes and notifications', () => {
+      const storage = new MockStorage();
+
+      const controller = createMatchFilters({
+        storage,
+        now: nowFn,
+      });
+
+      let notificationCount = 0;
+
+      controller.subscribe(() => {
+        notificationCount += 1;
+      });
+
+      storage.setItemCalls = [];
+
+      // Pass unchanged values (radiusKm is already 30, onlyUpcoming is already true)
+      controller.actions.setFilters({
+        radiusKm: 30,
+        onlyUpcoming: true,
+      });
+
+      expect(notificationCount).toBe(0);
+      expect(storage.setItemCalls.length).toBe(0);
+    });
+
+    it('supports functional state updater', () => {
+      const storage = new MockStorage();
+
+      const controller = createMatchFilters({
+        storage,
+        now: nowFn,
+      });
+
+      controller.actions.setFilters((prev) => ({
+        radiusKm: prev.radiusKm + 15,
+      }));
+
+      expect(controller.getState().radiusKm).toBe(45);
+    });
+
+    it('cascades league hierarchy in the same atomic pass when leagueIds and genders are patched together', () => {
+      const storage = new MockStorage();
+
+      const controller = createMatchFilters({
+        storage,
+        leagues: MOCK_LEAGUES,
+        now: nowFn,
+      });
+
+      let notificationCount = 0;
+
+      controller.subscribe(() => {
+        notificationCount += 1;
+      });
+
+      storage.setItemCalls = [];
+
+      // Provide both leagueIds (all 4) and genders (männlich only) in a single patch
+      controller.actions.setFilters({
+        leagueIds: [101, 102, 103, 104],
+        genders: ['männlich'],
+      });
+
+      expect(notificationCount).toBe(1);
+      expect(storage.setItemCalls.length).toBe(1);
+
+      const state = controller.getState();
+
+      expect(state.genders).toEqual(['männlich']);
+      // 102 (weiblich) and 104 (mixed) must be pruned in the exact same atomic pass
+      expect(state.leagueIds).toEqual([101, 103]);
+
+      const persistedJson = storage.getItem(FILTER_STORAGE_KEY);
+
+      expect(persistedJson).not.toBeNull();
+
+      if (persistedJson) {
+        // SAFETY: parse stored JSON payload
+        const parsed = JSON.parse(persistedJson);
+
+        expect(parsed.leagueIds).toEqual([101, 103]);
+      }
+    });
+
+    it('expands radius incrementally via expandRadius', () => {
+      const storage = new MockStorage();
+
+      const controller = createMatchFilters({
+        storage,
+        now: nowFn,
+      });
+
+      expect(controller.getState().radiusKm).toBe(30);
+
+      controller.actions.expandRadius(15);
+      expect(controller.getState().radiusKm).toBe(45);
+
+      // Clamps at 50 max
+      controller.actions.expandRadius(15);
+      expect(controller.getState().radiusKm).toBe(50);
+    });
+
+    it('clears custom date range and falls back to "all" when dateFrom and dateTo are empty strings', () => {
+      const storage = new MockStorage();
+
+      const controller = createMatchFilters({
+        storage,
+        now: nowFn,
+      });
+
+      controller.actions.setFilters({
+        dateFrom: '2026-11-15',
+        dateTo: '2026-11-20',
+      });
+      expect(controller.getState().dateMode).toBe('custom');
+
+      controller.actions.setFilters({
+        dateFrom: '',
+        dateTo: '',
+      });
+
+      const state = controller.getState();
+
+      expect(state.dateMode).toBe('all');
+      expect(state.dateFrom).toBe('');
+      expect(state.dateTo).toBe('');
+      expect(state.customDateFrom).toBe('');
+      expect(state.customDateTo).toBe('');
+    });
+
+    it('trims whitespace on teamQuery and converts empty string to undefined', () => {
+      const storage = new MockStorage();
+
+      const controller = createMatchFilters({
+        storage,
+        now: nowFn,
+      });
+
+      controller.actions.setFilters({
+        teamQuery: '   ',
+      });
+
+      expect(controller.getState().teamQuery).toBeUndefined();
+
+      controller.actions.setFilters({
+        teamQuery: '  BMA Basketball Academy  ',
+      });
+
+      expect(controller.getState().teamQuery).toBe('BMA Basketball Academy');
     });
   });
 });
