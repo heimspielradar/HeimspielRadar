@@ -161,7 +161,7 @@ describe('storage-usage', () => {
   });
 
   describe('getStorageUsageEstimate', () => {
-    it('combines navigator.storage.estimate and local measures', async () => {
+    it('combines navigator.storage.estimate and local measures as fallback when window.caches is undefined', async () => {
       const mockEstimate = jest.fn().mockResolvedValue({
         usage: 10240,
         quota: 1048576,
@@ -185,6 +185,77 @@ describe('storage-usage', () => {
       expect(estimate.quotaBytes).toBe(1048576);
       expect(estimate.localStorageBytes).toBe(16);
       expect(estimate.formattedTotal).toBe('10 KB');
+    });
+
+    it('uses actual cacheBytes and avoids Chromium opaque response padding inflation when caches is available', async () => {
+      const tile1Bytes = 10 * 1024 * 1024; // 10.0 MB
+      const tile2Bytes = Math.round(8.4 * 1024 * 1024); // 8.4 MB
+      const actualCacheBytes = tile1Bytes + tile2Bytes;
+
+      const mockCache = {
+        keys: jest.fn().mockResolvedValue([
+          { url: 'https://tiles.openfreemap.org/tile1.pbf' },
+          { url: 'https://tiles.openfreemap.org/tile2.pbf' },
+        ]),
+        match: jest.fn().mockImplementation((req: { url: string }) => {
+          if (req.url.includes('tile1')) {
+            return Promise.resolve({
+              headers: {
+                get: (header: string) => (header === 'content-length' ? `${tile1Bytes}` : null),
+              },
+            });
+          }
+
+          return Promise.resolve({
+            headers: {
+              get: (header: string) => (header === 'content-length' ? `${tile2Bytes}` : null),
+            },
+          });
+        }),
+      };
+
+      const mockCaches = {
+        keys: jest.fn().mockResolvedValue(['map-tiles-cache']),
+        open: jest.fn().mockResolvedValue(mockCache),
+      };
+
+      Object.defineProperty(globalThis.window, 'caches', {
+        value: mockCaches,
+        writable: true,
+        configurable: true,
+      });
+
+      // Chromium QuotaManager reports ~1.6 GB usage due to ~7 MB security padding per opaque response
+      const inflatedUsage = Math.round(1606.2 * 1024 * 1024);
+
+      const mockEstimate = jest.fn().mockResolvedValue({
+        usage: inflatedUsage,
+        quota: 10 * 1024 * 1024 * 1024,
+      });
+
+      Object.defineProperty(globalThis, 'navigator', {
+        value: {
+          storage: {
+            estimate: mockEstimate,
+          },
+        },
+        writable: true,
+        configurable: true,
+      });
+
+      // 2 KB (1024 characters * 2 bytes = 2048 bytes)
+      mockStorage.setItem('settings', 'x'.repeat(1016)); // (8 + 1016) * 2 = 2048 bytes
+
+      const estimate = await getStorageUsageEstimate();
+
+      expect(estimate.cacheBytes).toBe(actualCacheBytes);
+      expect(estimate.cacheEntryCount).toBe(2);
+      expect(estimate.localStorageBytes).toBe(2048);
+      expect(estimate.totalBytes).toBe(2048 + actualCacheBytes);
+      expect(estimate.totalBytes).not.toBe(inflatedUsage);
+      expect(estimate.formattedCache).toBe('18,4 MB');
+      expect(estimate.formattedLocalStorage).toBe('2 KB');
+      expect(estimate.formattedTotal).toBe('18,4 MB');
     });
 
     it('falls back to local sum when navigator.storage.estimate returns 0 or fails', async () => {

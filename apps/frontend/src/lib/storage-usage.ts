@@ -88,7 +88,7 @@ export async function calculateCacheStorageUsage(): Promise<{
   bytes: number;
   entryCount: number;
 }> {
-  if (typeof window === 'undefined' || !('caches' in window)) {
+  if (typeof window === 'undefined' || !('caches' in window) || !window.caches) {
     return { bytes: 0, entryCount: 0 };
   }
 
@@ -162,13 +162,16 @@ export async function getStorageUsageEstimate(): Promise<StorageEstimateResult> 
   const localStorageBytes = calculateLocalStorageBytes();
   const { bytes: cacheBytes, entryCount: cacheEntryCount } = await calculateCacheStorageUsage();
 
+  const canInspectCache =
+    typeof window !== 'undefined' && 'caches' in window && Boolean(window.caches);
+
   let effectiveCacheBytes = cacheBytes;
 
-  if (effectiveCacheBytes === 0 && navUsage > localStorageBytes) {
+  if (!canInspectCache && navUsage > localStorageBytes) {
     effectiveCacheBytes = navUsage - localStorageBytes;
   }
 
-  const totalBytes = Math.max(navUsage, localStorageBytes + effectiveCacheBytes);
+  const totalBytes = localStorageBytes + effectiveCacheBytes;
 
   return {
     totalBytes,
