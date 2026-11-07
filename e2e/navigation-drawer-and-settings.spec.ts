@@ -159,7 +159,7 @@ test.describe('Unified App Navigation Drawer & Dedicated /settings View', () => 
     await expect(page).toHaveURL(/\//);
   });
 
-  test('/settings renders full-page settings with map options, radius toggle, default view, and cache reset with toast', async ({
+  test('/settings renders dense hub with options card, radius toggle, and sub-view navigation to /settings/storage and back', async ({
     page,
   }) => {
     await page.goto('/settings');
@@ -167,16 +167,12 @@ test.describe('Unified App Navigation Drawer & Dedicated /settings View', () => 
 
     // Heading & Sections
     await expect(page.getByRole('heading', { name: /Einstellungen & Optionen/i })).toBeVisible();
-    await expect(page.getByText(/Karten-Optionen/i)).toBeVisible();
-    await expect(page.getByText(/Standard-Ansicht/i)).toBeVisible();
-    await expect(page.getByRole('heading', { name: /Push-Benachrichtigungen/i })).toBeVisible();
-    await expect(page.getByText(/Speicher & Offline-Cache/i)).toBeVisible();
-    await expect(page.getByText(/Über & DBB-Sync/i)).toBeVisible();
+    await expect(page.getByText('Erscheinungsbild')).toBeVisible();
+    await expect(page.getByText('Standard-Ansicht')).toBeVisible();
+    await expect(page.getByText('Suchradius-Kreis anzeigen')).toBeVisible();
+    await expect(page.getByTestId('settings-pwa-install-section')).toBeVisible();
 
-    // 1. Map options card shows consolidated MapLibre GL badge
-    await expect(page.getByText('MapLibre GL').first()).toBeVisible();
-
-    // 2. Radius toggle
+    // 1. Radius toggle
     const radiusSwitch = page.getByRole('switch');
     await expect(radiusSwitch).toBeVisible();
     const initialChecked = await radiusSwitch.getAttribute('aria-checked');
@@ -184,13 +180,34 @@ test.describe('Unified App Navigation Drawer & Dedicated /settings View', () => 
     const updatedChecked = await radiusSwitch.getAttribute('aria-checked');
     expect(updatedChecked).not.toBe(initialChecked);
 
-    // 3. Cache reset action with toast feedback
+    // 2. 3 Sub-View Navigation rows
+    const navNotifications = page.getByTestId('settings-nav-notifications');
+    const navStorage = page.getByTestId('settings-nav-storage');
+    const navSystem = page.getByTestId('settings-nav-system');
+    await expect(navNotifications).toBeVisible();
+    await expect(navStorage).toBeVisible();
+    await expect(navSystem).toBeVisible();
+
+    // 3. Drill down to /settings/storage
+    await navStorage.click();
+    await expect(page).toHaveURL(/\/settings\/storage/);
+    await expect(page.getByRole('heading', { name: /Speicher & Offline-Cache/i })).toBeVisible();
+
+    // Storage usage card & total usage
+    await expect(page.getByTestId('settings-storage-usage-card')).toBeVisible();
+    await expect(page.getByTestId('storage-total-usage')).toBeVisible();
+
+    // Cache reset action with toast feedback
     const resetCacheBtn = page.getByRole('button', { name: /Cache leeren/i });
     await expect(resetCacheBtn).toBeVisible();
     await resetCacheBtn.click();
-
-    // Expect feedback toast
     await expect(page.getByText(/Offline-Cache und Speicher erfolgreich geleert!/i)).toBeVisible();
+
+    // Header back button labeled "Einstellungen" navigates back to /settings
+    const backToSettingsBtn = page.getByRole('button', { name: /Einstellungen/i });
+    await expect(backToSettingsBtn).toBeVisible();
+    await backToSettingsBtn.click();
+    await expect(page).toHaveURL(/\/settings$/);
 
     // 4. Back button returns to /
     const backBtn = page.getByRole('button', { name: /Zurück/i });
@@ -262,14 +279,14 @@ test.describe('Unified App Navigation Drawer & Dedicated /settings View', () => 
     await expect(systemBtn).toHaveAttribute('aria-checked', 'true');
   });
 
-  test('/settings displays comprehensive system & diagnostics section with copy action', async ({
+  test('/settings/system displays comprehensive system & diagnostics section with copy action and back navigation', async ({
     page,
     context,
   }) => {
     // Grant clipboard permissions for copy debug info test
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
-    await page.goto('/settings');
+    await page.goto('/settings/system');
     await page.waitForLoadState('networkidle');
 
     // Section header
@@ -304,6 +321,28 @@ test.describe('Unified App Navigation Drawer & Dedicated /settings View', () => 
     await expect(copyBtn).toBeVisible();
     await copyBtn.click();
     await expect(copyBtn.getByText(/Kopiert!/i)).toBeVisible();
+
+    // 6. Header back button returns to /settings
+    const backBtn = page.getByRole('button', { name: /Einstellungen/i });
+    await expect(backBtn).toBeVisible();
+    await backBtn.click();
+    await expect(page).toHaveURL(/\/settings$/);
+  });
+
+  test('/settings/notifications displays push permission and active reminders list with back navigation', async ({
+    page,
+  }) => {
+    await page.goto('/settings/notifications');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByRole('heading', { name: /Push-Benachrichtigungen & Erinnerungen/i })).toBeVisible();
+    await expect(page.getByTestId('settings-reminders-section')).toBeVisible();
+    await expect(page.getByText('Keine aktiven Spiel-Erinnerungen vorhanden.')).toBeVisible();
+
+    const backBtn = page.getByRole('button', { name: /Einstellungen/i });
+    await expect(backBtn).toBeVisible();
+    await backBtn.click();
+    await expect(page).toHaveURL(/\/settings$/);
   });
 
   test('VenueModal bottom slider and drawers are intercepted by browser Back button without exiting app', async ({

@@ -414,8 +414,10 @@ test.describe('Kiosk & Venue Info Badges and Submission Modal (Issue #103)', () 
     await expect(pendingBadge).toBeVisible();
     await expect(pendingBadge).toContainText('Info ausstehend (Offline)');
 
-    // Navigate to /settings
+    // Navigate to /settings and open Storage & Offline-Cache sub-view
     await page.goto('/settings');
+    await page.getByTestId('settings-nav-storage').click();
+    await expect(page).toHaveURL(/\/settings\/storage/);
 
     const queueSection = page.locator('[data-testid="settings-offline-queue-section"]');
     await expect(queueSection).toBeVisible();
@@ -466,7 +468,8 @@ test.describe('Kiosk & Venue Info Badges and Submission Modal (Issue #103)', () 
       );
     });
 
-    await page.goto('/settings');
+    // Direct URL access to /settings/storage
+    await page.goto('/settings/storage');
 
     const queueSection = page.locator('[data-testid="settings-offline-queue-section"]');
     await expect(queueSection).toBeVisible();

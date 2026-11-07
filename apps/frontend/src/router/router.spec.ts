@@ -15,7 +15,7 @@ describe('router URL parsing', () => {
     });
   });
 
-  it('parses /settings path', () => {
+  it('parses /settings path and sub-routes', () => {
     expect(parseRoute('/settings')).toEqual({
       name: 'settings',
       path: '/settings',
@@ -23,6 +23,18 @@ describe('router URL parsing', () => {
     expect(parseRoute('/settings/')).toEqual({
       name: 'settings',
       path: '/settings',
+    });
+    expect(parseRoute('/settings/notifications')).toEqual({
+      name: 'settings',
+      path: '/settings/notifications',
+    });
+    expect(parseRoute('/settings/storage')).toEqual({
+      name: 'settings',
+      path: '/settings/storage',
+    });
+    expect(parseRoute('/settings/system')).toEqual({
+      name: 'settings',
+      path: '/settings/system',
     });
   });
 

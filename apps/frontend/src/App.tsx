@@ -514,6 +514,8 @@ function AppContent() {
   } else if (route.name === 'settings') {
     content = (
       <SettingsView
+        currentPath={route.path}
+        onNavigate={(path) => navigate(path)}
         showRadiusCircle={filters.showRadiusCircle}
         onToggleRadiusCircle={actions.setShowRadiusCircle}
         viewMode={filters.viewMode}
@@ -522,7 +524,13 @@ function AppContent() {
         radiusKm={filters.radiusKm}
         locationName={filters.location.name}
         onNavigateHome={() => navigate('/')}
-        onBack={() => navigate('/')}
+        onBack={() => {
+          if (route.path !== '/settings') {
+            navigate('/settings');
+          } else {
+            navigate('/');
+          }
+        }}
         onOpenNav={() => setIsNavDrawerOpen(true)}
       />
     );

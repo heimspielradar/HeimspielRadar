@@ -31,10 +31,15 @@ export function parseRoute(pathname: string, search = ''): Route {
     };
   }
 
-  if (cleanPath === '/settings') {
+  if (
+    cleanPath === '/settings' ||
+    cleanPath === '/settings/notifications' ||
+    cleanPath === '/settings/storage' ||
+    cleanPath === '/settings/system'
+  ) {
     return {
       name: 'settings',
-      path: '/settings',
+      path: cleanPath,
     };
   }
 

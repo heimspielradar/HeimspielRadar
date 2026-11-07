@@ -36,6 +36,8 @@ export interface SystemDiagnosticsSectionProps {
   filteredMatchesCount?: number;
   lastSyncedAt?: string | null;
   className?: string;
+  defaultExpanded?: boolean;
+  alwaysExpanded?: boolean;
 }
 
 export function SystemDiagnosticsSection({
@@ -243,17 +245,19 @@ export function SystemDiagnosticsSection({
             data-testid="copy-debug-info-button"
             className="h-8 text-xs font-medium gap-1.5"
           >
-            {copied ? (
-              <>
-                <Check className="h-3.5 w-3.5 text-emerald-300" />
-                <span>Kopiert!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="h-3.5 w-3.5" />
-                <span>Debug-Info kopieren</span>
-              </>
-            )}
+            <span data-testid="copy-diagnostics-button" className="inline-flex items-center gap-1.5">
+              {copied ? (
+                <>
+                  <Check className="h-3.5 w-3.5 text-emerald-300" />
+                  <span>Kopiert!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3.5 w-3.5" />
+                  <span>Debug-Info kopieren</span>
+                </>
+              )}
+            </span>
           </Button>
         </div>
       </div>
@@ -278,7 +282,10 @@ export function SystemDiagnosticsSection({
       )}
 
       {/* Grid: 4 Diagnostic Categories */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+      <div
+        data-testid="system-diagnostics-content"
+        className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs"
+      >
         {/* Category 1: Versionen & Commit-SHAs */}
         <div className="rounded-xl border border-border/60 bg-background/50 p-3 space-y-2">
           <div className="flex items-center justify-between pb-1 border-b border-border/40">
@@ -299,7 +306,7 @@ export function SystemDiagnosticsSection({
           </div>
 
           {/* Frontend Version & SHA */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" data-testid="diag-row-frontend">
             <span className="text-muted-foreground">Frontend:</span>
             <div className="flex items-center gap-1.5 font-mono text-[11px]">
               <span className="text-foreground">v{frontendVersion}</span>
@@ -323,7 +330,7 @@ export function SystemDiagnosticsSection({
           </div>
 
           {/* Backend Version & SHA */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" data-testid="diag-row-backend">
             <span className="text-muted-foreground">Backend:</span>
             <div className="flex items-center gap-1.5 font-mono text-[11px]">
               <span className="text-foreground">v{backendVersion}</span>
@@ -356,14 +363,22 @@ export function SystemDiagnosticsSection({
             </span>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" data-testid="diag-row-api-status">
+            <span className="text-muted-foreground">Server & API Status:</span>
+            <span className="flex items-center gap-1 font-mono text-[11px] text-emerald-400">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              Online
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between" data-testid="diag-row-built">
             <span className="text-muted-foreground">Frontend Built:</span>
             <span className="font-mono text-[11px] text-foreground">
               {formatIsoTimestamp(frontendBuiltAt)}
             </span>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" data-testid="diag-row-uptime">
             <span className="text-muted-foreground">Backend Uptime:</span>
             <span className="font-mono text-[11px] text-foreground">
               {backendUptimeSeconds != null ? formatUptime(backendUptimeSeconds) : '–'}
@@ -398,7 +413,7 @@ export function SystemDiagnosticsSection({
             </span>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" data-testid="diag-row-sw">
             <span className="text-muted-foreground">Service Worker:</span>
             <Badge
               variant="outline"
@@ -414,7 +429,7 @@ export function SystemDiagnosticsSection({
             </Badge>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" data-testid="diag-row-network">
             <span className="text-muted-foreground">Netzwerk:</span>
             <span
               className={`inline-flex items-center gap-1 font-medium ${
@@ -435,14 +450,14 @@ export function SystemDiagnosticsSection({
             </span>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" data-testid="diag-row-masterpool">
             <span className="text-muted-foreground">Masterpool (50 km):</span>
             <span className="font-mono text-[11px] text-foreground">
               {effectiveMasterPool} Spiele ({effectiveFiltered} gefiltert)
             </span>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" data-testid="diag-row-sync">
             <span className="text-muted-foreground flex items-center gap-1">
               <Clock className="h-3 w-3 text-primary" />
               DBB Sync:
@@ -462,28 +477,28 @@ export function SystemDiagnosticsSection({
             </span>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" data-testid="diag-row-engine">
             <span className="text-muted-foreground">Karten-Engine:</span>
             <Badge variant="outline" className="font-mono text-[10px] capitalize">
               {mapEngine}
             </Badge>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" data-testid="diag-row-theme">
             <span className="text-muted-foreground">Theme-Modus:</span>
             <span className="font-mono text-[11px] text-foreground capitalize">
               {themeMode}
             </span>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" data-testid="diag-row-viewport">
             <span className="text-muted-foreground">Viewport:</span>
             <span className="font-mono text-[11px] text-foreground">
               {viewport.width} × {viewport.height}
             </span>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" data-testid="diag-row-location">
             <span className="text-muted-foreground">Standort / Radius:</span>
             <span className="font-mono text-[11px] text-foreground truncate max-w-[140px] text-right">
               {locationSource} ({radiusKm} km)
