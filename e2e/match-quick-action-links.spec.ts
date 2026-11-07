@@ -307,7 +307,7 @@ test.describe('Match Quick-Action Links (Issue #95)', () => {
     await teamsHeader.click({ force: true });
 
     // In map view, the list view is unmounted and the bottom venue overlay appears
-    await expect(page.locator('[data-match-id="1001"]')).toBeHidden();
+    await expect(page.getByTestId('match-list')).toBeHidden();
     const venueHeading = page.getByRole('heading', { name: 'Sporthalle West' });
     await expect(venueHeading).toBeVisible();
   });
@@ -422,6 +422,10 @@ test.describe('Match Quick-Action Links (Issue #95)', () => {
     await page.getByTestId('nav-item-settings').click({ force: true });
     await expect(page).toHaveURL(/\/settings/);
 
+    // Drill down to /settings/notifications
+    await page.getByTestId('settings-nav-notifications').click({ force: true });
+    await expect(page).toHaveURL(/\/settings\/notifications/);
+
     // Verify Active Reminders section in Settings
     const settingsSection = page.locator('[data-testid="settings-reminders-section"]');
     await expect(settingsSection).toBeVisible();
@@ -436,8 +440,9 @@ test.describe('Match Quick-Action Links (Issue #95)', () => {
     await expect(settingsSection.getByText('0 aktiv')).toBeVisible();
     await expect(settingsSection.getByText('Keine aktiven Spiel-Erinnerungen vorhanden.')).toBeVisible();
 
-    // Navigate back to main view
-    await page.getByRole('button', { name: /Zurück/i }).click({ force: true });
+    // Navigate back to settings root, then home
+    await page.getByRole('button', { name: /Einstellungen/i }).click({ force: true });
+    await page.getByRole('button', { name: /Zum Heimspielradar|Zurück/i }).click({ force: true });
     await expect(page).toHaveURL(/\//);
 
     // Verify card bell is no longer active

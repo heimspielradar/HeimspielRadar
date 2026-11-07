@@ -2,8 +2,6 @@ export * from './MatchTile';
 
 export * from './TopMatchBadge';
 
-export * from './MatchCard';
-
 export * from './MatchList';
 
 export * from './MatchQuickActions';
@@ -19,3 +17,5 @@ export * from './KioskSubmissionModal';
 export * from './TopMatchInfoModal';
 
 export * from './GameReminderDialog';
+
+export * from './MatchDialogContext';

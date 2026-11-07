@@ -14,23 +14,21 @@ import type { Match } from '@sundayleague/shared-types';
 import { getMatchLinks } from '@/lib/match-links';
 import { getLeadTimeLabel, useReminders } from '@/lib/reminder-storage';
 import { shareMatch } from '@/lib/share-utils';
-import { GameReminderDialog } from './GameReminderDialog';
+import { useMatchDialog } from './MatchDialogContext';
 
 export interface MatchQuickActionsProps {
   match: Match;
   className?: string;
   size?: 'sm' | 'default';
-  onShareFeedback?: (message: string) => void;
 }
 
 export const MatchQuickActions: React.FC<MatchQuickActionsProps> = ({
   match,
   className = '',
   size = 'default',
-  onShareFeedback,
 }) => {
   const [isCopied, setIsCopied] = React.useState(false);
-  const [isReminderOpen, setIsReminderOpen] = React.useState(false);
+  const { openReminderModal, showToast } = useMatchDialog();
   const { getReminder } = useReminders();
   const activeReminder = getReminder(match.id);
   const isReminderActive = activeReminder !== null;
@@ -52,14 +50,14 @@ export const MatchQuickActions: React.FC<MatchQuickActionsProps> = ({
       onSuccess: (type) => {
         if (type === 'copied') {
           setIsCopied(true);
-          onShareFeedback?.('Link zum Spiel in die Zwischenablage kopiert!');
+          showToast('Link zum Spiel in die Zwischenablage kopiert!');
           setTimeout(() => setIsCopied(false), 2500);
         } else {
-          onShareFeedback?.('Spiel geteilt!');
+          showToast('Spiel geteilt!');
         }
       },
       onError: () => {
-        onShareFeedback?.('Teilen fehlgeschlagen');
+        showToast('Teilen fehlgeschlagen');
       },
     });
 
@@ -267,7 +265,7 @@ export const MatchQuickActions: React.FC<MatchQuickActionsProps> = ({
         data-active={isReminderActive ? 'true' : undefined}
         onClick={(e) => {
           e.stopPropagation();
-          setIsReminderOpen(true);
+          openReminderModal(match);
         }}
         className={`${baseButtonClass} ${
           isReminderActive
@@ -281,13 +279,6 @@ export const MatchQuickActions: React.FC<MatchQuickActionsProps> = ({
           }`}
         />
       </button>
-
-      <GameReminderDialog
-        isOpen={isReminderOpen}
-        onClose={() => setIsReminderOpen(false)}
-        match={match}
-        onFeedback={onShareFeedback}
-      />
     </div>
   );
 };

@@ -1815,7 +1815,7 @@ export function AdminDashboard({ onOpenNav, onNavigateHome }: AdminDashboardProp
                                   data-testid={`submission-preview-${sub.id}`}
                                 >
                                   <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    MatchCard Kachel-Vorschau
+                                    MatchTile Kachel-Vorschau
                                   </div>
                                   <KioskInfoBadges
                                     size="sm"
@@ -2368,14 +2368,14 @@ export function AdminDashboard({ onOpenNav, onNavigateHome }: AdminDashboardProp
                 />
               </div>
 
-              {/* Live Preview of MatchCard info tiles */}
+              {/* Live Preview of MatchTile info tiles */}
               <div
                 className="mt-3 rounded-lg border border-border/80 bg-background/60 p-3"
                 data-testid="edit-submission-preview"
               >
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Live-Vorschau (MatchCard Kacheln)
+                    Live-Vorschau (MatchTile Kacheln)
                   </span>
                   <span className="text-[10px] text-muted-foreground">
                     Aktualisiert in Echtzeit

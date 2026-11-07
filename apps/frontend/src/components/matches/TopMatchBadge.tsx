@@ -1,22 +1,20 @@
 import * as React from 'react';
 import type { Match } from '@sundayleague/shared-types';
 import { Badge } from '@/components/ui/badge';
-import { TopMatchInfoModal } from './TopMatchInfoModal';
+import { useMatchDialog } from './MatchDialogContext';
 
 export interface TopMatchBadgeProps {
   match: Match;
   className?: string;
   size?: 'sm' | 'default';
-  onOpenTopMatchInfo?: (match: Match) => void;
 }
 
 export function TopMatchBadge({
   match,
   className = '',
   size = 'default',
-  onOpenTopMatchInfo,
 }: TopMatchBadgeProps) {
-  const [isLocalModalOpen, setIsLocalModalOpen] = React.useState(false);
+  const { openTopMatchModal } = useMatchDialog();
 
   if (!match.isFeatured) {
     return null;
@@ -24,12 +22,7 @@ export function TopMatchBadge({
 
   const handleOpen = (e: React.SyntheticEvent) => {
     e.stopPropagation();
-
-    if (onOpenTopMatchInfo) {
-      onOpenTopMatchInfo(match);
-    } else {
-      setIsLocalModalOpen(true);
-    }
+    openTopMatchModal(match);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -42,30 +35,20 @@ export function TopMatchBadge({
   const sizeClasses = size === 'sm' ? 'text-[10px]' : 'text-[11px]';
 
   return (
-    <>
-      <Badge
-        variant="featured"
-        data-testid="featured-match-badge"
-        role="button"
-        tabIndex={0}
-        title="Topspiel-Details & Berechnungsgrundlage anzeigen"
-        onClick={handleOpen}
-        onKeyDown={handleKeyDown}
-        className={`cursor-pointer hover:brightness-110 active:scale-95 transition-all select-none ${sizeClasses} ${className}`}
-      >
-        <span className="mr-1" aria-hidden="true">
-          ⭐
-        </span>
-        Topspiel
-      </Badge>
-
-      {!onOpenTopMatchInfo && (
-        <TopMatchInfoModal
-          match={match}
-          isOpen={isLocalModalOpen}
-          onClose={() => setIsLocalModalOpen(false)}
-        />
-      )}
-    </>
+    <Badge
+      variant="featured"
+      data-testid="featured-match-badge"
+      role="button"
+      tabIndex={0}
+      title="Topspiel-Details & Berechnungsgrundlage anzeigen"
+      onClick={handleOpen}
+      onKeyDown={handleKeyDown}
+      className={`cursor-pointer hover:brightness-110 active:scale-95 transition-all select-none ${sizeClasses} ${className}`}
+    >
+      <span className="mr-1" aria-hidden="true">
+        ⭐
+      </span>
+      Topspiel
+    </Badge>
   );
 }
