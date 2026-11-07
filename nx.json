@@ -49,5 +49,8 @@
       "projectChangelogs": true,
       "automaticFromRef": true
     }
+  },
+  "affected": {
+    "legacy": true
   }
 }
