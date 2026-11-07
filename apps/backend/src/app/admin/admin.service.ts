@@ -32,10 +32,7 @@ import {
   teams,
   venues,
 } from '../database/schema';
-import { TelegramNotifierService } from './telegram-notifier.service';
-import { verifyAdminToken } from '../submissions/submissions.service';
-
-export { verifyAdminToken };
+import { TelegramNotifierService } from '../scraper/telegram-notifier.service';
 
 export interface AdminRelationalMatchRow {
   match: {
@@ -102,10 +99,6 @@ export class AdminService {
     @Optional() @Inject(DRIZZLE_DB) private readonly db: DrizzleDb | null,
     @Optional() private readonly telegramNotifier?: TelegramNotifierService
   ) {}
-
-  verifyToken(token?: string, authHeader?: string): void {
-    verifyAdminToken(token, authHeader);
-  }
 
   private mapLeague(league: NonNullable<AdminRelationalMatchRow['league']>): League {
     return {
