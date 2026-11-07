@@ -23,7 +23,11 @@ import type { CitySuggestion } from '@/lib/cities';
 import { formatLastSyncedAt } from '@/lib/date-utils';
 import { getDonationUrl, getTransparencyUrl } from '@/lib/donation';
 import { STUTTGART_FALLBACK } from '@/lib/geo-utils';
-import type { MatchFiltersActions, MatchFiltersState } from '@/lib/use-match-filters';
+import type {
+  MatchFiltersActions,
+  MatchFiltersPatch,
+  MatchFiltersState,
+} from '@/lib/use-match-filters';
 import { useBottomSheetDrag } from '@/lib/use-bottom-sheet-drag';
 
 export interface FilterAvailableOptions {
@@ -148,15 +152,9 @@ export function FilterBar({
   } = filters;
 
   const {
-    setLocation,
-    setRadius: setRadiusKm,
-    setDateMode,
-    setDateRange,
-    setOnlyUpcoming,
-    setTeamQuery,
-    setGenders,
-    setAgeClasses,
+    setFilters,
     resetFilters,
+    locateUser,
   } = actions;
 
   const isCustomCityActive = Boolean(
@@ -169,46 +167,54 @@ export function FilterBar({
 
   const handleSelectCity = React.useCallback(
     (city: CitySuggestion) => {
-      setLocation({
-        lat: city.lat,
-        lng: city.lng,
-        name: city.name,
+      setFilters({
+        location: {
+          lat: city.lat,
+          lng: city.lng,
+          name: city.name,
+        },
+        teamQuery: undefined,
       });
-      setTeamQuery(undefined);
     },
-    [setLocation, setTeamQuery],
+    [setFilters],
   );
 
   const handleSelectTeam = React.useCallback(
     (s: TeamSuggestion) => {
-      setTeamQuery(s.name);
+      const patch: MatchFiltersPatch = {
+        teamQuery: s.name,
+      };
 
       if (s.akName) {
-        setAgeClasses([s.akName]);
+        patch.ageClasses = [s.akName];
       }
 
       if (s.geschlecht) {
-        setGenders([s.geschlecht]);
+        patch.genders = [s.geschlecht];
       }
+
+      setFilters(patch);
     },
-    [setAgeClasses, setGenders, setTeamQuery],
+    [setFilters],
   );
 
   const handleSelectRawTeam = React.useCallback(
     (raw: string) => {
-      setTeamQuery(raw);
+      setFilters({ teamQuery: raw });
     },
-    [setTeamQuery],
+    [setFilters],
   );
 
   const handleClearTeam = React.useCallback(() => {
-    setTeamQuery(undefined);
-  }, [setTeamQuery]);
+    setFilters({ teamQuery: undefined });
+  }, [setFilters]);
 
   const handleClearCity = React.useCallback(() => {
-    setLocation(STUTTGART_FALLBACK);
-    setRadiusKm(30);
-  }, [setLocation, setRadiusKm]);
+    setFilters({
+      location: STUTTGART_FALLBACK,
+      radiusKm: 30,
+    });
+  }, [setFilters]);
 
   const effectiveMatchCount =
     availableOptions.matchesCount ?? availableOptions.matchCount ?? 0;
@@ -276,7 +282,7 @@ export function FilterBar({
             <button
               key={item.id}
               type="button"
-              onClick={() => setDateMode(item.id)}
+              onClick={() => setFilters({ dateMode: item.id })}
               className={`rounded py-1.5 text-xs font-medium transition ${
                 dateMode === item.id
                   ? 'bg-background text-foreground shadow-xs font-bold'
@@ -308,7 +314,7 @@ export function FilterBar({
                 onChange={(e) => {
                   const nextFrom = e.target.value;
                   const nextTo = dateTo && nextFrom && dateTo < nextFrom ? nextFrom : dateTo;
-                  setDateRange(nextFrom, nextTo);
+                  setFilters({ dateFrom: nextFrom, dateTo: nextTo });
                 }}
                 className="h-8 rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 aria-label="Startdatum (Von)"
@@ -323,7 +329,7 @@ export function FilterBar({
                 onChange={(e) => {
                   const nextTo = e.target.value;
                   const nextFrom = dateFrom && nextTo && nextTo < dateFrom ? nextTo : dateFrom;
-                  setDateRange(nextFrom, nextTo);
+                  setFilters({ dateFrom: nextFrom, dateTo: nextTo });
                 }}
                 className="h-8 rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 aria-label="Enddatum (Bis)"
@@ -347,7 +353,7 @@ export function FilterBar({
             type="button"
             role="switch"
             aria-checked={onlyUpcoming}
-            onClick={() => setOnlyUpcoming(!onlyUpcoming)}
+            onClick={() => setFilters({ onlyUpcoming: !onlyUpcoming })}
             className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
               onlyUpcoming ? 'bg-primary' : 'bg-muted'
             }`}
@@ -390,7 +396,7 @@ export function FilterBar({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => actions.requestLocation()}
+            onClick={() => locateUser()}
             className="h-6 px-1.5 text-[11px] text-primary"
           >
             <LocateFixed className="mr-1 h-3 w-3" />
@@ -412,7 +418,7 @@ export function FilterBar({
               max={50}
               step={5}
               value={[radiusKm]}
-              onValueChange={(val) => val[0] && setRadiusKm(val[0])}
+              onValueChange={(val) => val[0] && setFilters({ radiusKm: val[0] })}
               disabled={Boolean(teamQuery)}
               aria-label="Suchradius in Kilometern"
               className="w-full"
@@ -441,11 +447,11 @@ export function FilterBar({
                 key={g}
                 type="button"
                 onClick={() =>
-                  setGenders(
-                    isSelected
+                  setFilters({
+                    genders: isSelected
                       ? genders.filter((x) => x !== g)
-                      : [...genders, g]
-                  )
+                      : [...genders, g],
+                  })
                 }
                 className={`rounded-lg py-1.5 text-xs font-medium border transition ${
                   isSelected
@@ -475,11 +481,11 @@ export function FilterBar({
                 key={ak}
                 type="button"
                 onClick={() =>
-                  setAgeClasses(
-                    isSelected
+                  setFilters({
+                    ageClasses: isSelected
                       ? ageClasses.filter((x) => x !== ak)
-                      : [...ageClasses, ak]
-                  )
+                      : [...ageClasses, ak],
+                  })
                 }
                 className={`rounded-full px-2.5 py-1 text-xs font-medium border transition ${
                   isSelected
@@ -629,7 +635,7 @@ export function FilterBar({
                     key={preset.id}
                     type="button"
                     onClick={() => {
-                      setDateMode(preset.id);
+                      setFilters({ dateMode: preset.id });
                       setDesktopPopover(null);
                     }}
                     className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-medium ${
@@ -660,7 +666,7 @@ export function FilterBar({
                       onChange={(e) => {
                         const nextFrom = e.target.value;
                         const nextTo = dateTo && nextFrom && dateTo < nextFrom ? nextFrom : dateTo;
-                        setDateRange(nextFrom, nextTo);
+                        setFilters({ dateFrom: nextFrom, dateTo: nextTo });
                       }}
                       className="h-7 w-full rounded-md border border-border bg-background px-1.5 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                       aria-label="Desktop Startdatum (Von)"
@@ -674,7 +680,7 @@ export function FilterBar({
                       onChange={(e) => {
                         const nextTo = e.target.value;
                         const nextFrom = dateFrom && nextTo && nextTo < dateFrom ? nextTo : dateFrom;
-                        setDateRange(nextFrom, nextTo);
+                        setFilters({ dateFrom: nextFrom, dateTo: nextTo });
                       }}
                       className="h-7 w-full rounded-md border border-border bg-background px-1.5 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                       aria-label="Desktop Enddatum (Bis)"
@@ -697,7 +703,7 @@ export function FilterBar({
                     key={km}
                     type="button"
                     onClick={() => {
-                      setRadiusKm(km);
+                      setFilters({ radiusKm: km });
                       setDesktopPopover(null);
                     }}
                     className={`rounded-lg py-1 text-xs font-semibold ${
@@ -715,7 +721,7 @@ export function FilterBar({
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  actions.requestLocation();
+                  locateUser();
                   setDesktopPopover(null);
                 }}
                 className="w-full text-xs h-7"
@@ -888,11 +894,11 @@ export function FilterBar({
                     key={g}
                     type="button"
                     onClick={() =>
-                      setGenders(
-                        isSelected
+                      setFilters({
+                        genders: isSelected
                           ? genders.filter((x) => x !== g)
-                          : [...genders, g]
-                      )
+                          : [...genders, g],
+                      })
                     }
                     className={`shrink-0 rounded-xl px-2.5 py-1 text-xs font-medium border transition ${
                       isSelected

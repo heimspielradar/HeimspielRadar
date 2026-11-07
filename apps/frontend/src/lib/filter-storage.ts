@@ -4,6 +4,8 @@ export {
   type DateFilterMode,
   type DateMode,
   type PersistedFilterState,
+  type MatchFiltersPatch,
+  type MatchFiltersUpdater,
   DEFAULT_FILTER_STATE,
   resolveDateRange,
   resolveDateRangeFromMode,
