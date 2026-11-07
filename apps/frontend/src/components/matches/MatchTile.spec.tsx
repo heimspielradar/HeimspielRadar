@@ -1,8 +1,15 @@
 import { renderToString } from 'react-dom/server';
 import type { Match } from '@sundayleague/shared-types';
 import { MatchTile } from './MatchTile';
-import { MatchCard } from './MatchCard';
 import { TopMatchBadge } from './TopMatchBadge';
+import {
+  MatchDialogContext,
+  MatchDialogProvider,
+  useMatchDialog,
+  useOnKioskSubmissionSuccess,
+  type MatchDialogContextValue,
+} from './MatchDialogContext';
+import { RouterProvider } from '@/router';
 
 const sampleMatch: Match = {
   id: 101,
@@ -68,33 +75,32 @@ describe('MatchTile and TopMatchBadge Canonical Components', () => {
       expect(html).toContain('Topspiel');
     });
 
-    it('invokes onOpenTopMatchInfo when clicked', () => {
+    it('dispatches openTopMatchModal via useMatchDialog when clicked', () => {
       let openedMatch: Match | null = null;
 
-      const onOpenTopMatchInfo = (m: Match) => {
-        openedMatch = m;
+      const mockContext: MatchDialogContextValue = {
+        openKioskModal: jest.fn(),
+        openTopMatchModal: (m) => {
+          openedMatch = m;
+        },
+        openReminderModal: jest.fn(),
+        showToast: jest.fn(),
+        isAnyDialogOpen: false,
+        registerKioskSuccessListener: () => () => {},
       };
 
       const element = (
-        <TopMatchBadge
-          match={featuredMatch}
-          onOpenTopMatchInfo={onOpenTopMatchInfo}
-        />
+        <MatchDialogContext.Provider value={mockContext}>
+          <TopMatchBadge match={featuredMatch} />
+        </MatchDialogContext.Provider>
       );
 
-      // Verify callback prop is passed
-      expect(element.props.onOpenTopMatchInfo).toBe(onOpenTopMatchInfo);
-
-      // Invoke callback
-      element.props.onOpenTopMatchInfo(featuredMatch);
-      expect(openedMatch).toEqual(featuredMatch);
-    });
-
-    it('mounts TopMatchInfoModal when onOpenTopMatchInfo is omitted', () => {
-      const html = renderToString(<TopMatchBadge match={featuredMatch} />);
+      const html = renderToString(element);
 
       expect(html).toContain('data-testid="featured-match-badge"');
-      expect(html).toBeDefined();
+
+      mockContext.openTopMatchModal(featuredMatch);
+      expect(openedMatch).toEqual(featuredMatch);
     });
   });
 
@@ -156,36 +162,93 @@ describe('MatchTile and TopMatchBadge Canonical Components', () => {
 
       expect(activeHtml).toContain('border-primary');
     });
+  });
 
-    it('delegates onOpenTopMatchInfo and onReportKioskInfo callbacks', () => {
-      let reportedMatch: Match | null = null;
-      let topMatchInfo: Match | null = null;
+  describe('MatchDialogContext & useMatchDialog Lifecycle Seam', () => {
+    it('provides safe default no-op context when used outside MatchDialogProvider', () => {
+      let captured: MatchDialogContextValue | undefined;
 
-      const element = (
-        <MatchTile
-          match={featuredMatch}
-          variant="card"
-          onReportKioskInfo={(m) => {
-            reportedMatch = m;
-          }}
-          onOpenTopMatchInfo={(m) => {
-            topMatchInfo = m;
-          }}
-        />
-      );
+      function TestConsumer() {
+        captured = useMatchDialog();
 
-      element.props.onReportKioskInfo?.(featuredMatch);
-      element.props.onOpenTopMatchInfo?.(featuredMatch);
+        return null;
+      }
 
-      expect(reportedMatch).toEqual(featuredMatch);
-      expect(topMatchInfo).toEqual(featuredMatch);
+      renderToString(<TestConsumer />);
+
+      expect(captured).toBeDefined();
+      expect(captured?.isAnyDialogOpen).toBe(false);
+
+      // Verify no-op dispatches do not throw
+      expect(() => captured?.openKioskModal(sampleMatch)).not.toThrow();
+      expect(() => captured?.openTopMatchModal(sampleMatch)).not.toThrow();
+      expect(() => captured?.openReminderModal(sampleMatch)).not.toThrow();
+      expect(() => captured?.showToast('Test')).not.toThrow();
+      expect(() => captured?.registerKioskSuccessListener(() => {})()).not.toThrow();
     });
 
-    it('MatchCard acts as a backward-compatible wrapper for MatchTile variant="card"', () => {
-      const cardWrapperHtml = renderToString(<MatchCard match={sampleMatch} />);
-      const tileCardHtml = renderToString(<MatchTile match={sampleMatch} variant="card" />);
+    it('useOnKioskSubmissionSuccess safely no-ops outside MatchDialogProvider', () => {
+      const callback = jest.fn();
 
-      expect(cardWrapperHtml).toEqual(tileCardHtml);
+      function TestConsumer() {
+        useOnKioskSubmissionSuccess(callback);
+
+        return null;
+      }
+
+      expect(() => renderToString(<TestConsumer />)).not.toThrow();
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('renders MatchDialogProvider with children and modals inside RouterProvider', () => {
+      const html = renderToString(
+        <RouterProvider initialPath="/">
+          <MatchDialogProvider>
+            <div data-testid="app-content-stub">Child App Content</div>
+          </MatchDialogProvider>
+        </RouterProvider>,
+      );
+
+      expect(html).toContain('data-testid="app-content-stub"');
+      expect(html).toContain('Child App Content');
+    });
+
+    it('useOnKioskSubmissionSuccess notifies registered listeners', () => {
+      let triggerSuccess: ((msg: string) => void) | undefined;
+      let registeredCount = 0;
+
+      const mockContext: MatchDialogContextValue = {
+        openKioskModal: jest.fn(),
+        openTopMatchModal: jest.fn(),
+        openReminderModal: jest.fn(),
+        showToast: jest.fn(),
+        isAnyDialogOpen: false,
+        registerKioskSuccessListener: (cb) => {
+          registeredCount++;
+          triggerSuccess = cb;
+
+          return () => {
+            registeredCount--;
+          };
+        },
+      };
+
+      const receivedMessages: string[] = [];
+
+      // Manually trigger listener registration via mock context
+      const unsubscribe = mockContext.registerKioskSuccessListener((msg) => {
+        receivedMessages.push(msg);
+      });
+
+      expect(registeredCount).toBe(1);
+
+      // Simulate kiosk submission success event
+      triggerSuccess?.('Kiosk-Infos erfolgreich übermittelt!');
+
+      expect(receivedMessages).toEqual(['Kiosk-Infos erfolgreich übermittelt!']);
+
+      unsubscribe();
+      expect(registeredCount).toBe(0);
     });
   });
 

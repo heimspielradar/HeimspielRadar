@@ -8,15 +8,13 @@ import {
 import type { Match } from '@sundayleague/shared-types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { MatchCard } from './MatchCard';
+import { MatchTile } from './MatchTile';
 
 export interface MatchListProps {
   matches: Match[];
   selectedMatchId?: number | null;
   onSelectMatch: (match: Match) => void;
   onHoverMatch?: (match: Match) => void;
-  onReportKioskInfo?: (match: Match) => void;
-  onOpenTopMatchInfo?: (match: Match) => void;
   isLoading?: boolean;
   radiusKm: number;
   onExpandRadius?: () => void;
@@ -29,8 +27,6 @@ export function MatchList({
   selectedMatchId,
   onSelectMatch,
   onHoverMatch,
-  onReportKioskInfo,
-  onOpenTopMatchInfo,
   isLoading = false,
   radiusKm,
   onExpandRadius,
@@ -150,19 +146,18 @@ export function MatchList({
   }
 
   return (
-    <div className={`space-y-3 ${className}`}>
+    <div data-testid="match-list" className={`space-y-3 ${className}`}>
       {sortedMatches.map((match) => {
         const isSelected = selectedMatchId === match.id;
 
         return (
-          <MatchCard
+          <MatchTile
             key={match.id}
             match={match}
+            variant="card"
             isSelected={isSelected}
             onClick={() => onSelectMatch(match)}
             onMouseEnter={() => onHoverMatch?.(match)}
-            onReportKioskInfo={onReportKioskInfo}
-            onOpenTopMatchInfo={onOpenTopMatchInfo}
             ref={(node) => {
               if (node) {
                 cardElementsRef.current.set(match.id, node);

@@ -11,7 +11,10 @@ import type { Match } from '@sundayleague/shared-types';
 import { MapContainer } from '@/components/map';
 import { formatLeagueName } from '@/components/map/map-utils';
 import { KioskInfoBadges } from '@/components/matches/KioskInfoBadges';
-import { KioskSubmissionModal } from '@/components/matches/KioskSubmissionModal';
+import {
+  useMatchDialog,
+  useOnKioskSubmissionSuccess,
+} from '@/components/matches/MatchDialogContext';
 import { MatchQuickActions } from '@/components/matches/MatchQuickActions';
 import { TopMatchBadge } from '@/components/matches/TopMatchBadge';
 import { Badge } from '@/components/ui/badge';
@@ -57,54 +60,41 @@ export function MatchDetailView({
 }: MatchDetailViewProps) {
   const [match, setMatch] = React.useState<Match | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [toastMessage, setToastMessage] = React.useState<string | null>(null);
-  const [isKioskModalOpen, setIsKioskModalOpen] = React.useState(false);
 
+  const { openKioskModal, showToast } = useMatchDialog();
   const { hasPendingSubmission } = useKioskQueue();
 
-  const showToast = React.useCallback((message: string) => {
-    setToastMessage(message);
-    const timer = setTimeout(() => setToastMessage(null), 5000);
+  const loadMatch = React.useCallback(async () => {
+    try {
+      const res = await fetch(`/api/matches/${matchId}`);
 
-    return () => clearTimeout(timer);
-  }, []);
+      if (res.ok) {
+        // SAFETY: Backend returns domain Match DTO
+        const data = (await res.json()) as Match;
 
-  React.useEffect(() => {
-    let isCancelled = false;
-    setIsLoading(true);
-
-    async function loadMatch() {
-      try {
-        const res = await fetch(`/api/matches/${matchId}`);
-
-        if (res.ok) {
-          // SAFETY: Backend returns domain Match DTO
-          const data = (await res.json()) as Match;
-
-          if (!isCancelled) {
-            setMatch(data);
-            setIsLoading(false);
-          }
-
-          return;
-        }
-      } catch {
-        // Fall back to sample matches if offline or backend is unconfigured
-      }
-
-      if (!isCancelled) {
-        const sample = getSampleMatches().find((m) => m.id === matchId) ?? null;
-        setMatch(sample);
+        setMatch(data);
         setIsLoading(false);
+
+        return;
       }
+    } catch {
+      // Fall back to sample matches if offline or backend is unconfigured
     }
 
-    loadMatch();
+    const sample = getSampleMatches().find((m) => m.id === matchId) ?? null;
 
-    return () => {
-      isCancelled = true;
-    };
+    setMatch(sample);
+    setIsLoading(false);
   }, [matchId]);
+
+  React.useEffect(() => {
+    setIsLoading(true);
+    loadMatch();
+  }, [loadMatch]);
+
+  useOnKioskSubmissionSuccess(() => {
+    loadMatch();
+  });
 
   const handleShare = async () => {
     if (!match) {
@@ -202,23 +192,6 @@ export function MatchDetailView({
           <span className="hidden sm:inline">Teilen</span>
         </Button>
       </AppHeader>
-
-      {/* Toast Feedback */}
-      {toastMessage && (
-        <div
-          role="status"
-          className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 flex items-center gap-2 rounded-lg border border-border/80 bg-background/95 px-4 py-2 text-xs text-foreground shadow-lg backdrop-blur-md"
-        >
-          <span>{toastMessage}</span>
-          <button
-            type="button"
-            onClick={() => setToastMessage(null)}
-            className="ml-2 text-muted-foreground hover:text-foreground"
-          >
-            ✕
-          </button>
-        </div>
-      )}
 
       {/* Main Body - Centered Ticket layout that fits completely within 100dvh without scrolling */}
       <main className="relative flex flex-1 min-h-0 w-full flex-col items-center justify-center p-2 sm:p-4 overflow-hidden bg-radial from-muted/30 to-background dark:from-slate-900/60 dark:to-slate-950/95">
@@ -417,11 +390,7 @@ export function MatchDetailView({
                   <span className="hidden xs:inline text-[10px] font-mono uppercase text-muted-foreground mr-1">
                     DBB Links:
                   </span>
-                  <MatchQuickActions
-                    match={match}
-                    size="sm"
-                    onShareFeedback={showToast}
-                  />
+                  <MatchQuickActions match={match} size="sm" />
                 </div>
               </div>
 
@@ -429,7 +398,7 @@ export function MatchDetailView({
                 <button
                   type="button"
                   data-action="kiosk-submission"
-                  onClick={() => setIsKioskModalOpen(true)}
+                  onClick={() => openKioskModal(match)}
                   className="inline-flex h-6 items-center gap-1 rounded-lg border border-amber-500/35 bg-amber-500/10 px-2.5 text-[10px] font-semibold text-amber-300 transition-colors hover:border-amber-400/60 hover:bg-amber-500/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
                 >
                   <span aria-hidden="true">🌭</span>
@@ -440,13 +409,6 @@ export function MatchDetailView({
           </div>
         </div>
       </main>
-
-      <KioskSubmissionModal
-        match={match}
-        isOpen={isKioskModalOpen}
-        onClose={() => setIsKioskModalOpen(false)}
-        onSuccess={(msg) => showToast(msg)}
-      />
     </div>
   );
 }

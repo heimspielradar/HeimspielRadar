@@ -34,8 +34,8 @@ Consult this reference during implementation and code review (`/code-review`, `r
    - `MapLibreEngine.tsx` is a pure declarative view adapter consuming `useMapViewModel`.
    - Clicking a venue pin calls `onMarkerClick(group.matches[0])` to open the bottom Multi-Match Venue Overlay without rendering a duplicate in-map popup.
    - Selected venue pins render with a higher `z-index` than neighboring unselected pins.
-4. **Match Tile & Badge Parity (`MatchCard.tsx` ↔ `VenueModal.tsx`)**:
-   - Whenever match badges, status indicators, or interactive modals on match tiles (e.g. Featured/Topspiel, Kiosk, League badges) are added or updated in `apps/frontend/src/components/matches/MatchCard.tsx`, mirror the behavior and props in `apps/frontend/src/components/matches/VenueModal.tsx` in lockstep.
+4. **Match Tile Presentation (`MatchTile.tsx`)**:
+   - All match badges, status indicators, and interactive modals on match tiles (e.g. Featured/Topspiel, Kiosk, League badges) are centralized in `apps/frontend/src/components/matches/MatchTile.tsx` (`variant="card"` for `MatchList`, `variant="row"` for `VenueModal`) and powered by `MatchDialogProvider` / `useMatchDialog()`.
 
 ---
 

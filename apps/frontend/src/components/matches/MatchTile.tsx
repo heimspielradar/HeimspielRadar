@@ -21,7 +21,7 @@ import { formatDisplayDate, formatKickoffTime } from '@/lib/date-utils';
 import { formatDistance } from '@/lib/geo-utils';
 import { useKioskQueue } from '@/lib/kiosk-submission-queue';
 import { KioskInfoBadges } from './KioskInfoBadges';
-import { KioskSubmissionModal } from './KioskSubmissionModal';
+import { useMatchDialog } from './MatchDialogContext';
 import { MatchQuickActions } from './MatchQuickActions';
 import { TopMatchBadge } from './TopMatchBadge';
 
@@ -32,8 +32,6 @@ export interface MatchTileProps {
   isActive?: boolean;
   onClick?: () => void;
   onMouseEnter?: () => void;
-  onReportKioskInfo?: (match: Match) => void;
-  onOpenTopMatchInfo?: (match: Match) => void;
   className?: string;
 }
 
@@ -46,15 +44,11 @@ export const MatchTile = React.forwardRef<HTMLDivElement, MatchTileProps>(
       isActive = false,
       onClick,
       onMouseEnter,
-      onReportKioskInfo,
-      onOpenTopMatchInfo,
       className = '',
     },
     ref,
   ) => {
-    const [isLocalKioskModalOpen, setIsLocalKioskModalOpen] = React.useState(false);
-    const [localToast, setLocalToast] = React.useState<string | null>(null);
-
+    const { openKioskModal } = useMatchDialog();
     const { hasPendingSubmission } = useKioskQueue();
     const hasPendingOffline = hasPendingSubmission(match.id);
 
@@ -80,12 +74,7 @@ export const MatchTile = React.forwardRef<HTMLDivElement, MatchTileProps>(
 
     const handleOpenKioskModal = (e: React.MouseEvent) => {
       e.stopPropagation();
-
-      if (onReportKioskInfo) {
-        onReportKioskInfo(match);
-      } else {
-        setIsLocalKioskModalOpen(true);
-      }
+      openKioskModal(match);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -106,139 +95,113 @@ export const MatchTile = React.forwardRef<HTMLDivElement, MatchTileProps>(
           : 'border-border/60 bg-card/60 hover:border-primary/40 hover:bg-card';
 
       return (
-        <>
-          <div
-            ref={ref}
-            data-match-id={match.id}
-            data-featured={isFeatured ? 'true' : undefined}
-            onClick={onClick}
-            onMouseEnter={onMouseEnter}
-            role="button"
-            tabIndex={0}
-            onKeyDown={handleKeyDown}
-            className={`cursor-pointer rounded-xl border p-3 text-xs transition-all ${rowStateClasses} ${className}`}
-          >
-            {/* Header: Badges & Kickoff Date/Time */}
-            <div className="flex flex-wrap items-center justify-between gap-1.5">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <TopMatchBadge
-                  match={match}
-                  size="sm"
-                  onOpenTopMatchInfo={onOpenTopMatchInfo}
-                />
-
-                {hasPendingOffline && (
-                  <Badge
-                    variant="outline"
-                    data-testid="kiosk-offline-pending-badge"
-                    className="bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30 text-[10px] font-semibold"
-                  >
-                    <Clock className="mr-1 h-2.5 w-2.5 shrink-0" />
-                    Info ausstehend (Offline)
-                  </Badge>
-                )}
-
-                <Badge variant="league" className="text-[10px]">
-                  <Trophy className="mr-1 h-2.5 w-2.5" />
-                  {leagueName}
-                </Badge>
-
-                {categoryParts.length > 0 && (
-                  <Badge variant="outline" className="text-[10px] bg-muted/60">
-                    {categoryParts.join(' • ')}
-                  </Badge>
-                )}
-              </div>
-
-              <span className="font-mono text-[11px] font-semibold text-foreground">
-                {dateFormatted} • {formatKickoffTime(match.kickoffTime)}
-              </span>
-            </div>
-
-            {/* Teams Matchup */}
-            <div className="mt-2 flex items-center justify-between gap-2 text-sm font-bold text-foreground">
-              <span className="truncate">{match.homeTeam.name}</span>
-              <span className="shrink-0 font-mono text-xs text-muted-foreground font-normal">
-                vs.
-              </span>
-              <span className="truncate text-right">{match.guestTeam.name}</span>
-            </div>
-
-            {match.result && (
-              <div className="mt-1.5 text-right font-mono text-xs font-bold text-primary">
-                Endstand: {match.result}
-              </div>
-            )}
-
-            {/* Kiosk & Venue Info Badges */}
-            {hasKioskOrVenueInfo && (
-              <KioskInfoBadges
+        <div
+          ref={ref}
+          data-match-id={match.id}
+          data-featured={isFeatured ? 'true' : undefined}
+          onClick={onClick}
+          onMouseEnter={onMouseEnter}
+          role="button"
+          tabIndex={0}
+          onKeyDown={handleKeyDown}
+          className={`cursor-pointer rounded-xl border p-3 text-xs transition-all ${rowStateClasses} ${className}`}
+        >
+          {/* Header: Badges & Kickoff Date/Time */}
+          <div className="flex flex-wrap items-center justify-between gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <TopMatchBadge
                 match={match}
                 size="sm"
-                className="mt-2 border-t border-border/30 pt-2"
               />
-            )}
 
-            {kioskTeaser && !hasKioskOrVenueInfo && (
-              <div
-                data-testid="match-kiosk-teaser"
-                className="mt-2 flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-900 dark:text-amber-200"
-              >
-                <span className="shrink-0 leading-none" aria-hidden="true">
-                  🥨
-                </span>
-                <span className="truncate font-medium">{kioskTeaser}</span>
-              </div>
-            )}
-
-            {/* Footer Actions: DBB Quick-Actions & Kiosk Submission Button */}
-            <div className="mt-2.5 flex flex-col gap-2 border-t border-border/40 pt-2">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  DBB Quick-Actions
-                </span>
-
-                <MatchQuickActions match={match} size="sm" />
-              </div>
-
-              <div className="flex items-center justify-end border-t border-border/25 pt-1.5">
-                <button
-                  type="button"
-                  data-action="kiosk-submission"
-                  onClick={handleOpenKioskModal}
-                  onKeyDown={(e) => e.stopPropagation()}
-                  className="inline-flex h-6 items-center gap-1 rounded-lg border border-amber-500/35 bg-amber-500/10 px-2.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300 transition-colors hover:border-amber-400/60 hover:bg-amber-500/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
+              {hasPendingOffline && (
+                <Badge
+                  variant="outline"
+                  data-testid="kiosk-offline-pending-badge"
+                  className="bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30 text-[10px] font-semibold"
                 >
-                  <span aria-hidden="true">🌭</span>
-                  <span>Kiosk- & Hallen-Info melden</span>
-                </button>
-              </div>
+                  <Clock className="mr-1 h-2.5 w-2.5 shrink-0" />
+                  Info ausstehend (Offline)
+                </Badge>
+              )}
+
+              <Badge variant="league" className="text-[10px]">
+                <Trophy className="mr-1 h-2.5 w-2.5" />
+                {leagueName}
+              </Badge>
+
+              {categoryParts.length > 0 && (
+                <Badge variant="outline" className="text-[10px] bg-muted/60">
+                  {categoryParts.join(' • ')}
+                </Badge>
+              )}
             </div>
+
+            <span className="font-mono text-[11px] font-semibold text-foreground">
+              {dateFormatted} • {formatKickoffTime(match.kickoffTime)}
+            </span>
           </div>
 
-          {!onReportKioskInfo && (
-            <>
-              <KioskSubmissionModal
-                match={match}
-                isOpen={isLocalKioskModalOpen}
-                onClose={() => setIsLocalKioskModalOpen(false)}
-                onSuccess={(msg) => {
-                  setLocalToast(msg);
-                  setTimeout(() => setLocalToast(null), 5000);
-                }}
-              />
+          {/* Teams Matchup */}
+          <div className="mt-2 flex items-center justify-between gap-2 text-sm font-bold text-foreground">
+            <span className="truncate">{match.homeTeam.name}</span>
+            <span className="shrink-0 font-mono text-xs text-muted-foreground font-normal">
+              vs.
+            </span>
+            <span className="truncate text-right">{match.guestTeam.name}</span>
+          </div>
 
-              {localToast && (
-                <div
-                  role="status"
-                  className="fixed bottom-20 left-1/2 z-70 -translate-x-1/2 flex items-center gap-2 rounded-lg border border-border/80 bg-background/95 px-4 py-2 text-xs text-foreground shadow-lg backdrop-blur-md"
-                >
-                  <span>{localToast}</span>
-                </div>
-              )}
-            </>
+          {match.result && (
+            <div className="mt-1.5 text-right font-mono text-xs font-bold text-primary">
+              Endstand: {match.result}
+            </div>
           )}
-        </>
+
+          {/* Kiosk & Venue Info Badges */}
+          {hasKioskOrVenueInfo && (
+            <KioskInfoBadges
+              match={match}
+              size="sm"
+              className="mt-2 border-t border-border/30 pt-2"
+            />
+          )}
+
+          {kioskTeaser && !hasKioskOrVenueInfo && (
+            <div
+              data-testid="match-kiosk-teaser"
+              className="mt-2 flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-900 dark:text-amber-200"
+            >
+              <span className="shrink-0 leading-none" aria-hidden="true">
+                🥨
+              </span>
+              <span className="truncate font-medium">{kioskTeaser}</span>
+            </div>
+          )}
+
+          {/* Footer Actions: DBB Quick-Actions & Kiosk Submission Button */}
+          <div className="mt-2.5 flex flex-col gap-2 border-t border-border/40 pt-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                DBB Quick-Actions
+              </span>
+
+              <MatchQuickActions match={match} size="sm" />
+            </div>
+
+            <div className="flex items-center justify-end border-t border-border/25 pt-1.5">
+              <button
+                type="button"
+                data-action="kiosk-submission"
+                onClick={handleOpenKioskModal}
+                onKeyDown={(e) => e.stopPropagation()}
+                className="inline-flex h-6 items-center gap-1 rounded-lg border border-amber-500/35 bg-amber-500/10 px-2.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300 transition-colors hover:border-amber-400/60 hover:bg-amber-500/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
+              >
+                <span aria-hidden="true">🌭</span>
+                <span>Kiosk- & Hallen-Info melden</span>
+              </button>
+            </div>
+          </div>
+        </div>
       );
     }
 
@@ -250,212 +213,163 @@ export const MatchTile = React.forwardRef<HTMLDivElement, MatchTileProps>(
         : 'border-border/70 hover:border-primary/50 hover:bg-muted/20 hover:shadow-xs';
 
     return (
-      <>
-        <Card
-          ref={ref}
-          data-match-id={match.id}
-          data-featured={isFeatured ? 'true' : undefined}
-          onClick={onClick}
-          onMouseEnter={onMouseEnter}
-          tabIndex={0}
-          role="button"
-          onKeyDown={handleKeyDown}
-          className={`cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${cardStateClasses} ${className}`}
-        >
-          <CardHeader className="pb-2.5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <TopMatchBadge
-                  match={match}
-                  size="default"
-                  onOpenTopMatchInfo={onOpenTopMatchInfo}
-                />
+      <Card
+        ref={ref}
+        data-match-id={match.id}
+        data-featured={isFeatured ? 'true' : undefined}
+        onClick={onClick}
+        onMouseEnter={onMouseEnter}
+        tabIndex={0}
+        role="button"
+        onKeyDown={handleKeyDown}
+        className={`cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${cardStateClasses} ${className}`}
+      >
+        <CardHeader className="pb-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <TopMatchBadge
+                match={match}
+                size="default"
+              />
 
-                {hasPendingOffline && (
-                  <Badge
-                    variant="outline"
-                    data-testid="kiosk-offline-pending-badge"
-                    className="bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30 text-[10px] font-semibold"
-                  >
-                    <Clock className="mr-1 h-2.5 w-2.5 shrink-0" />
-                    Info ausstehend (Offline)
-                  </Badge>
-                )}
-
-                <Badge variant="league" className="text-[11px]">
-                  <Trophy className="mr-1 h-3 w-3" />
-                  {leagueName}
-                </Badge>
-
-                {categoryParts.length > 0 && (
-                  <Badge variant="outline" className="text-[10px]">
-                    {categoryParts.join(' • ')}
-                  </Badge>
-                )}
-
-                <Badge variant="kickoff" className="text-[11px]">
-                  <Clock className="mr-1 h-3 w-3" />
-                  {formatKickoffTime(match.kickoffTime)}
-                </Badge>
-
-                <span className="font-mono text-[11px] text-muted-foreground">
-                  {match.matchDay}. Spieltag
-                </span>
-              </div>
-
-              {/* Score Badge if finished or Confirmation Status Badge */}
-              {isFinished ? (
-                <Badge variant="secondary" className="font-mono font-bold text-primary text-xs">
-                  {match.result} {match.confirmed ? '(bestätigt)' : '(vorläufig)'}
-                </Badge>
-              ) : match.confirmed ? (
-                <Badge variant="success" className="text-[11px]">
-                  <CheckCircle2 className="mr-1 h-3 w-3" />
-                  Bestätigt
-                </Badge>
-              ) : (
-                <Badge variant="warning" className="text-[11px]">
-                  Vorläufig
+              {hasPendingOffline && (
+                <Badge
+                  variant="outline"
+                  data-testid="kiosk-offline-pending-badge"
+                  className="bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30 text-[10px] font-semibold"
+                >
+                  <Clock className="mr-1 h-2.5 w-2.5 shrink-0" />
+                  Info ausstehend (Offline)
                 </Badge>
               )}
-            </div>
-          </CardHeader>
 
-          <CardContent className="pb-3">
-            {/* Teams Matchup */}
-            <div className="flex items-center justify-between gap-3 py-1.5">
-              <div className="flex-1 space-y-0.5">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Heim
-                </span>
-                <div className="font-bold text-base text-foreground leading-tight">
-                  {match.homeTeam.name}
-                </div>
-              </div>
+              <Badge variant="league" className="text-[11px]">
+                <Trophy className="mr-1 h-3 w-3" />
+                {leagueName}
+              </Badge>
 
-              <div className="shrink-0 px-2.5 py-1 text-xs font-mono font-semibold text-muted-foreground rounded-md bg-muted/80">
-                VS
-              </div>
+              {categoryParts.length > 0 && (
+                <Badge variant="outline" className="text-[10px]">
+                  {categoryParts.join(' • ')}
+                </Badge>
+              )}
 
-              <div className="flex-1 space-y-0.5 text-right">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Gast
-                </span>
-                <div className="font-bold text-base text-foreground leading-tight">
-                  {match.guestTeam.name}
-                </div>
-              </div>
+              <Badge variant="kickoff" className="text-[11px]">
+                <Clock className="mr-1 h-3 w-3" />
+                {formatKickoffTime(match.kickoffTime)}
+              </Badge>
+
+              <span className="font-mono text-[11px] text-muted-foreground">
+                {match.matchDay}. Spieltag
+              </span>
             </div>
 
-            {/* Venue & Distance Information */}
-            {match.venue && (
-              <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-border/40 pt-2.5 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1.5 truncate">
-                  <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
-                  <span className="truncate font-medium text-foreground">
-                    {match.venue.name}
-                  </span>
-                  <span className="truncate text-muted-foreground">
-                    • {match.venue.city}
-                  </span>
-                </div>
+            {/* Score Badge if finished or Confirmation Status Badge */}
+            {isFinished ? (
+              <Badge variant="secondary" className="font-mono font-bold text-primary text-xs">
+                {match.result} {match.confirmed ? '(bestätigt)' : '(vorläufig)'}
+              </Badge>
+            ) : match.confirmed ? (
+              <span className="flex items-center text-[10px] text-primary/80">
+                <CheckCircle2 className="mr-1 h-3 w-3" />
+                Bestätigt
+              </span>
+            ) : null}
+          </div>
 
-                <span className="shrink-0 font-mono text-[11px] font-medium text-primary">
-                  {formatDistance(match.distanceKm)}
-                </span>
-              </div>
-            )}
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <span className="font-bold text-base text-foreground leading-snug">
+              {match.homeTeam.name}
+            </span>
+            <span className="font-mono text-xs font-semibold text-muted-foreground shrink-0">
+              vs.
+            </span>
+            <span className="font-bold text-base text-foreground text-right leading-snug">
+              {match.guestTeam.name}
+            </span>
+          </div>
+        </CardHeader>
 
-            {/* Kiosk, Admission & Parking Badges */}
-            {hasKioskOrVenueInfo && (
-              <KioskInfoBadges
-                match={match}
-                className="mt-2.5 border-t border-border/30 pt-2.5"
-              />
-            )}
-
-            {kioskTeaser && !hasKioskOrVenueInfo && (
-              <div
-                data-testid="match-kiosk-teaser"
-                className="mt-2 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-200"
-              >
-                <span className="shrink-0 text-sm leading-none" aria-hidden="true">
-                  🥨
-                </span>
-                <span className="truncate font-medium">{kioskTeaser}</span>
-              </div>
-            )}
-          </CardContent>
-
-          <CardFooter className="pt-2 pb-2.5 flex flex-col gap-2 border-t border-border/30 mt-1">
-            <div className="flex flex-wrap items-center justify-between gap-2 w-full">
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
-                <Calendar className="h-3 w-3 text-muted-foreground" />
-                <span>{dateFormatted}</span>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  data-action="kiosk-submission"
-                  onClick={handleOpenKioskModal}
-                  onKeyDown={(e) => e.stopPropagation()}
-                  className="inline-flex h-7 items-center gap-1 rounded-lg border border-amber-500/35 bg-amber-500/10 px-2.5 text-[11px] font-semibold text-amber-300 transition-colors hover:border-amber-400/60 hover:bg-amber-500/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
-                >
-                  <span aria-hidden="true">🌭</span>
-                  <span>Kiosk- & Hallen-Info melden</span>
-                </button>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onClick?.();
-                  }}
-                  className="h-7 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
-                >
-                  <Compass className="mr-1 h-3 w-3" />
-                  <span className="hidden sm:inline">Auf Karte anzeigen</span>
-                  <span className="sm:hidden">Karte</span>
-                </Button>
-              </div>
-            </div>
-
-            <div className="w-full border-t border-border/20 pt-1.5 flex items-center justify-between">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                DBB Quick-Actions
+        <CardContent className="space-y-3 pb-3">
+          {/* Venue and Distance info */}
+          {match.venue && (
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5 truncate">
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <span className="truncate font-medium">{match.venue.name}</span>
+                <span>•</span>
+                <span>{match.venue.city}</span>
               </span>
 
-              <MatchQuickActions match={match} />
+              {match.distanceKm != null && (
+                <span className="ml-2 shrink-0 font-mono text-[11px] font-semibold text-foreground">
+                  {formatDistance(match.distanceKm)}
+                </span>
+              )}
             </div>
-          </CardFooter>
-        </Card>
+          )}
 
-        {!onReportKioskInfo && (
-          <>
-            <KioskSubmissionModal
-              match={match}
-              isOpen={isLocalKioskModalOpen}
-              onClose={() => setIsLocalKioskModalOpen(false)}
-              onSuccess={(msg) => {
-                setLocalToast(msg);
-                setTimeout(() => setLocalToast(null), 5000);
-              }}
-            />
+          {/* Kiosk and Venue Details Badges */}
+          {hasKioskOrVenueInfo && <KioskInfoBadges match={match} />}
 
-            {localToast && (
-              <div
-                role="status"
-                className="fixed bottom-20 left-1/2 z-70 -translate-x-1/2 flex items-center gap-2 rounded-lg border border-border/80 bg-background/95 px-4 py-2 text-xs text-foreground shadow-lg backdrop-blur-md"
+          {/* Kiosk Teaser Fallback banner */}
+          {kioskTeaser && !hasKioskOrVenueInfo && (
+            <div
+              data-testid="match-kiosk-teaser"
+              className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200"
+            >
+              <span className="shrink-0 text-sm leading-none" aria-hidden="true">
+                🥨
+              </span>
+              <span className="truncate font-medium">{kioskTeaser}</span>
+            </div>
+          )}
+        </CardContent>
+
+        <CardFooter className="pt-2 flex flex-col gap-2">
+          <div className="w-full flex items-center justify-between border-t border-border/40 pt-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1 font-mono text-[11px]">
+              <Calendar className="h-3 w-3" />
+              {dateFormatted}
+            </span>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                data-action="kiosk-submission"
+                onClick={handleOpenKioskModal}
+                onKeyDown={(e) => e.stopPropagation()}
+                className="inline-flex h-7 items-center gap-1 rounded-lg border border-amber-500/35 bg-amber-500/10 px-2.5 text-xs font-semibold text-amber-700 dark:text-amber-300 transition-colors hover:border-amber-400/60 hover:bg-amber-500/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
               >
-                <span>{localToast}</span>
-              </div>
-            )}
-          </>
-        )}
-      </>
+                <span aria-hidden="true">🌭</span>
+                <span>Kiosk- & Hallen-Info melden</span>
+              </button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClick?.();
+                }}
+                className="h-7 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
+              >
+                <Compass className="mr-1 h-3 w-3" />
+                <span className="hidden sm:inline">Auf Karte anzeigen</span>
+                <span className="sm:hidden">Karte</span>
+              </Button>
+            </div>
+          </div>
+
+          <div className="w-full border-t border-border/20 pt-1.5 flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              DBB Quick-Actions
+            </span>
+
+            <MatchQuickActions match={match} />
+          </div>
+        </CardFooter>
+      </Card>
     );
   },
 );

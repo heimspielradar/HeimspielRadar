@@ -65,7 +65,8 @@ export type OverlayType =
   | 'filter-drawer'
   | 'nav-drawer'
   | 'kiosk-modal'
-  | 'top-match-modal';
+  | 'top-match-modal'
+  | 'reminder-modal';
 
 export interface RouterHistoryOverlayState {
   __overlay?: string;

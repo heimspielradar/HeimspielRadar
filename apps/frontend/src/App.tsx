@@ -15,10 +15,11 @@ import { AppHeader, NavigationDrawer } from '@/components/navigation';
 import { MapContainer } from '@/components/map';
 import { groupMatchesByVenue, isSameVenue } from '@/components/map/map-utils';
 import {
-  KioskSubmissionModal,
   MatchDetailView,
+  MatchDialogProvider,
   MatchList,
-  TopMatchInfoModal,
+  useMatchDialog,
+  useOnKioskSubmissionSuccess,
   VenueModal,
 } from '@/components/matches';
 import {
@@ -62,6 +63,7 @@ function MainView({
   const isOnline = useOnlineStatus();
   const { filters, actions, query } = filterEngine;
   const { route, closeOverlay } = useRouter();
+  const { showToast } = useMatchDialog();
 
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = React.useState<boolean>(false);
 
@@ -84,10 +86,6 @@ function MainView({
     return null;
   });
 
-  const [toastMessage, setToastMessage] = React.useState<string | null>(null);
-  const [kioskModalMatch, setKioskModalMatch] = React.useState<Match | null>(null);
-  const [topMatchModalMatch, setTopMatchModalMatch] = React.useState<Match | null>(null);
-
   // History-backed overlay dismissals (LIFO stack: Back button pops top overlay without exiting app)
   useOverlay({
     id: `venue-${selectedMatchId ?? 'none'}`,
@@ -104,63 +102,38 @@ function MainView({
     onClose: () => setIsFilterDrawerOpen(false),
   });
 
-  useOverlay({
-    id: 'kiosk-modal',
-    type: 'kiosk-modal',
-    isOpen: kioskModalMatch !== null,
-    onClose: () => setKioskModalMatch(null),
-  });
-
-  useOverlay({
-    id: 'top-match-modal',
-    type: 'top-match-modal',
-    isOpen: topMatchModalMatch !== null,
-    onClose: () => setTopMatchModalMatch(null),
-  });
-
-  const showToastMessage = React.useCallback((message: string) => {
-    setToastMessage(message);
-    const timer = setTimeout(() => setToastMessage(null), 5000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
   // Handle location error feedback
   React.useEffect(() => {
     if (filters.locationError) {
-      setToastMessage(filters.locationError);
-      const timer = setTimeout(() => setToastMessage(null), 6000);
-
-      return () => clearTimeout(timer);
+      showToast(filters.locationError);
     }
-  }, [filters.locationError]);
+  }, [filters.locationError, showToast]);
 
   const handleLocateUser = async () => {
     const loc = await actions.locateUser();
 
     if (loc) {
       setSelectedMatchId(null);
-      setToastMessage('Standort ermittelt: Karte zentriert');
-      const timer = setTimeout(() => setToastMessage(null), 3000);
-
-      return () => clearTimeout(timer);
+      showToast('Standort ermittelt: Karte zentriert');
     }
   };
 
   // Query matches with debounced API integration and deepened query seam
   const { matches, isLoading, refetch } = useMatches(query);
 
+  useOnKioskSubmissionSuccess(refetch);
+
   // Background auto-sync for queued kiosk submissions
   React.useEffect(() => {
     return initKioskAutoSync(({ syncedCount }) => {
-      showToastMessage(
+      showToast(
         syncedCount === 1
           ? KIOSK_SUBMISSION_SYNCED_MESSAGE
           : `${syncedCount} ausstehende Kiosk-Infos wurden erfolgreich übermittelt!`,
       );
       refetch();
     });
-  }, [showToastMessage, refetch]);
+  }, [showToast, refetch]);
 
   // Clear selectedMatchId if the selected match is no longer in the filtered results (after loading completes)
   React.useEffect(() => {
@@ -258,25 +231,6 @@ function MainView({
         </aside>
       )}
 
-      {/* Feedback Toast Notification */}
-      {toastMessage && (
-        <div
-          role="status"
-          className="fixed bottom-20 left-1/2 z-70 -translate-x-1/2 flex items-center gap-2 rounded-lg border border-border/80 bg-background/95 px-4 py-2 text-xs text-foreground shadow-lg backdrop-blur-md"
-        >
-          <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
-          <span>{toastMessage}</span>
-          <button
-            type="button"
-            onClick={() => setToastMessage(null)}
-            className="ml-2 text-muted-foreground hover:text-foreground text-xs"
-            aria-label="Schließen"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
       {/* Main Content Area: Full-Screen Map View OR Full-Screen List View */}
       <main className="relative flex flex-1 min-h-0 w-full flex-col md:flex-row overflow-hidden">
         {/* Canonical FilterBar: Bottom Bar (Docked Peek) + Mobile Sheet + Desktop Sidebar */}
@@ -324,8 +278,6 @@ function MainView({
               selectedMatch={selectedMatch}
               venueMatches={selectedVenueMatches}
               onSelectMatch={(matchId) => setSelectedMatchId(matchId)}
-              onReportKioskInfo={(m) => setKioskModalMatch(m)}
-              onOpenTopMatchInfo={(m) => setTopMatchModalMatch(m)}
               onClose={() => closeOverlay(`venue-${selectedMatchId}`)}
             />
           </div>
@@ -423,8 +375,6 @@ function MainView({
                   setSelectedMatchId(match.id);
                   actions.setViewMode('map');
                 }}
-                onReportKioskInfo={(match) => setKioskModalMatch(match)}
-                onOpenTopMatchInfo={(match) => setTopMatchModalMatch(match)}
                 isLoading={isLoading}
                 radiusKm={filters.radiusKm}
                 onExpandRadius={handleExpandRadius}
@@ -434,24 +384,6 @@ function MainView({
           </div>
         )}
       </main>
-
-      {/* Kiosk & Venue Info Submission Modal */}
-      <KioskSubmissionModal
-        match={kioskModalMatch}
-        isOpen={kioskModalMatch !== null}
-        onClose={() => closeOverlay('kiosk-modal')}
-        onSuccess={(msg) => {
-          showToastMessage(msg);
-          refetch();
-        }}
-      />
-
-      {/* Central Top Match Calculation Info Modal */}
-      <TopMatchInfoModal
-        match={topMatchModalMatch}
-        isOpen={topMatchModalMatch !== null}
-        onClose={() => closeOverlay('top-match-modal')}
-      />
 
       {/* PWA Install Banner */}
       <PwaInstallBanner />
@@ -612,7 +544,9 @@ export function App() {
   return (
     <ThemeProvider>
       <RouterProvider>
-        <AppContent />
+        <MatchDialogProvider>
+          <AppContent />
+        </MatchDialogProvider>
       </RouterProvider>
     </ThemeProvider>
   );

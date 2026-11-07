@@ -7,17 +7,14 @@ import {
 } from '@/lib/date-utils';
 import { formatDistance } from '@/lib/geo-utils';
 import { getMatchLinks } from '@/lib/match-links';
-import { KioskSubmissionModal } from '@/components/matches/KioskSubmissionModal';
 import { MatchTile } from '@/components/matches/MatchTile';
-import { TopMatchInfoModal } from '@/components/matches/TopMatchInfoModal';
+import { useMatchDialog } from '@/components/matches/MatchDialogContext';
 import { useBottomSheetDrag } from '@/lib/use-bottom-sheet-drag';
 
 export interface VenueModalProps {
   selectedMatch: Match | null;
   venueMatches: Match[];
   onSelectMatch: (matchId: number) => void;
-  onReportKioskInfo?: (match: Match) => void;
-  onOpenTopMatchInfo?: (match: Match) => void;
   onClose: () => void;
 }
 
@@ -29,13 +26,9 @@ export function VenueModal({
   selectedMatch,
   venueMatches,
   onSelectMatch,
-  onReportKioskInfo,
-  onOpenTopMatchInfo,
   onClose,
 }: VenueModalProps) {
-  const [localModalMatch, setLocalModalMatch] = React.useState<Match | null>(null);
-  const [selectedTopMatch, setSelectedTopMatch] = React.useState<Match | null>(null);
-  const [localToast, setLocalToast] = React.useState<string | null>(null);
+  const { isAnyDialogOpen } = useMatchDialog();
 
   const {
     isAnimatingOut,
@@ -51,7 +44,7 @@ export function VenueModal({
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (selectedTopMatch !== null || localModalMatch !== null) {
+        if (isAnyDialogOpen) {
           return;
         }
 
@@ -62,7 +55,7 @@ export function VenueModal({
     window.addEventListener('keydown', handleKeyDown);
 
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [closeWithAnimation, selectedTopMatch, localModalMatch]);
+  }, [closeWithAnimation, isAnyDialogOpen]);
 
   if (!selectedMatch?.venue) {
     return null;
@@ -184,16 +177,6 @@ export function VenueModal({
                   variant="row"
                   isActive={isActiveMatch}
                   onClick={() => onSelectMatch(venueMatch.id)}
-                  onReportKioskInfo={
-                    onReportKioskInfo
-                      ? (m) => onReportKioskInfo(m)
-                      : (m) => setLocalModalMatch(m)
-                  }
-                  onOpenTopMatchInfo={
-                    onOpenTopMatchInfo
-                      ? (m) => onOpenTopMatchInfo(m)
-                      : (m) => setSelectedTopMatch(m)
-                  }
                 />
               );
             })}
@@ -212,38 +195,6 @@ export function VenueModal({
           </button>
         </div>
       </div>
-
-      {!onReportKioskInfo && (
-        <>
-          <KioskSubmissionModal
-            match={localModalMatch}
-            isOpen={localModalMatch !== null}
-            onClose={() => setLocalModalMatch(null)}
-            onSuccess={(msg) => {
-              setLocalToast(msg);
-              setTimeout(() => setLocalToast(null), 5000);
-            }}
-          />
-
-          {localToast && (
-            <div
-              role="status"
-              className="fixed bottom-20 left-1/2 z-70 -translate-x-1/2 flex items-center gap-2 rounded-lg border border-border/80 bg-background/95 px-4 py-2 text-xs text-foreground shadow-lg backdrop-blur-md"
-            >
-              <span>{localToast}</span>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Top Match Calculation Info Modal fallback */}
-      {!onOpenTopMatchInfo && (
-        <TopMatchInfoModal
-          match={selectedTopMatch}
-          isOpen={selectedTopMatch !== null}
-          onClose={() => setSelectedTopMatch(null)}
-        />
-      )}
     </div>
   );
 }
