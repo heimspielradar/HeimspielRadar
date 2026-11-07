@@ -34,6 +34,11 @@ export interface VapidPublicKeyResponse {
   publicKey: string;
 }
 
+export interface PushReminderCheckResult {
+  sent: number;
+  failed: number;
+}
+
 @Injectable()
 export class PushService implements OnModuleInit {
   private readonly logger = new Logger(PushService.name);
@@ -237,13 +242,39 @@ export class PushService implements OnModuleInit {
     return { success: true };
   }
 
+  private isCronDisabled(): boolean {
+    const disableCron =
+      this.configService?.get<string>('DISABLE_CRON') ??
+      process.env['DISABLE_CRON'];
+
+    if (disableCron === 'true') {
+      return true;
+    }
+
+    const enableCronSync =
+      this.configService?.get<string>('ENABLE_CRON_SYNC') ??
+      process.env['ENABLE_CRON_SYNC'];
+
+    if (enableCronSync === 'false') {
+      return true;
+    }
+
+    return false;
+  }
+
   /**
    * Trigger 1: Scheduled Tip-Off Reminders checked every 5 minutes in Europe/Berlin.
    */
   @Cron('*/5 * * * *', { timeZone: 'Europe/Berlin' })
-  async checkDueReminders(now: Date = new Date()): Promise<number> {
+  async checkDueReminders(now: Date = new Date()): Promise<PushReminderCheckResult> {
+    if (this.isCronDisabled()) {
+      this.logger.log('Scheduled push reminders skipped (cron is disabled).');
+
+      return { sent: 0, failed: 0 };
+    }
+
     if (!this.db || !this.vapidPublicKey || !this.vapidPrivateKey) {
-      return 0;
+      return { sent: 0, failed: 0 };
     }
 
     try {
@@ -253,6 +284,7 @@ export class PushService implements OnModuleInit {
         .where(isNull(pushReminders.reminderSentAt));
 
       let sentCount = 0;
+      let failedCount = 0;
 
       for (const reminder of unsentReminders) {
         const due = isReminderDue(
@@ -336,14 +368,15 @@ export class PushService implements OnModuleInit {
           this.logger.warn(
             `Failed to dispatch push reminder ${reminder.id}: ${sendResult.error}`,
           );
+          failedCount++;
         }
       }
 
-      return sentCount;
+      return { sent: sentCount, failed: failedCount };
     } catch (err) {
       this.logger.error('Error during scheduled push reminder execution:', err);
 
-      return 0;
+      return { sent: 0, failed: 0 };
     }
   }
 
