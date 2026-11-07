@@ -281,6 +281,82 @@ describe('PushService', () => {
       await service.initVapidKeys();
     });
 
+    it('skips execution and returns { sent: 0, failed: 0 } when ENABLE_CRON_SYNC is false', async () => {
+      mockConfig.get.mockImplementation((key: string) => {
+        if (key === 'ENABLE_CRON_SYNC') {
+          return 'false';
+        }
+
+        if (key === 'VAPID_PUBLIC_KEY') {
+          return 'test-pub';
+        }
+
+        if (key === 'VAPID_PRIVATE_KEY') {
+          return 'test-priv';
+        }
+
+        return null;
+      });
+
+      const res = await service.checkDueReminders();
+
+      expect(res).toEqual({ sent: 0, failed: 0 });
+      expect(mockDb.select).not.toHaveBeenCalled();
+    });
+
+    it('skips execution and returns { sent: 0, failed: 0 } when DISABLE_CRON is true', async () => {
+      mockConfig.get.mockImplementation((key: string) => {
+        if (key === 'DISABLE_CRON') {
+          return 'true';
+        }
+
+        if (key === 'VAPID_PUBLIC_KEY') {
+          return 'test-pub';
+        }
+
+        if (key === 'VAPID_PRIVATE_KEY') {
+          return 'test-priv';
+        }
+
+        return null;
+      });
+
+      const res = await service.checkDueReminders();
+
+      expect(res).toEqual({ sent: 0, failed: 0 });
+      expect(mockDb.select).not.toHaveBeenCalled();
+    });
+
+    it('skips execution when process.env[ENABLE_CRON_SYNC] is false and ConfigService returns undefined', async () => {
+      const origEnv = process.env['ENABLE_CRON_SYNC'];
+      process.env['ENABLE_CRON_SYNC'] = 'false';
+
+      try {
+        mockConfig.get.mockImplementation((key: string) => {
+          if (key === 'VAPID_PUBLIC_KEY') {
+            return 'test-pub';
+          }
+
+          if (key === 'VAPID_PRIVATE_KEY') {
+            return 'test-priv';
+          }
+
+          return undefined;
+        });
+
+        const res = await service.checkDueReminders();
+
+        expect(res).toEqual({ sent: 0, failed: 0 });
+        expect(mockDb.select).not.toHaveBeenCalled();
+      } finally {
+        if (origEnv === undefined) {
+          delete process.env['ENABLE_CRON_SYNC'];
+        } else {
+          process.env['ENABLE_CRON_SYNC'] = origEnv;
+        }
+      }
+    });
+
     it('prunes expired 404/410 subscriptions automatically', async () => {
       mockDb.select.mockReturnValue({
         from: jest.fn().mockReturnValue({
@@ -320,7 +396,7 @@ describe('PushService', () => {
       const now = new Date('2026-11-08T13:30:00.000Z');
       const sent = await service.checkDueReminders(now);
 
-      expect(sent).toBe(0);
+      expect(sent).toEqual({ sent: 0, failed: 0 });
       expect(deleteWhere).toHaveBeenCalled();
     });
 
@@ -367,7 +443,7 @@ describe('PushService', () => {
       const now = new Date('2026-11-08T12:05:00.000Z');
       const sent = await service.checkDueReminders(now);
 
-      expect(sent).toBe(1);
+      expect(sent).toEqual({ sent: 1, failed: 0 });
       expect(sendSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           payload: expect.objectContaining({

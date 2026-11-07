@@ -198,8 +198,52 @@ describe('web-push.util', () => {
       expect(capturedHeaders['Content-Type']).toBe('application/octet-stream');
       expect(capturedHeaders['Content-Encoding']).toBe('aes128gcm');
       expect(capturedHeaders['TTL']).toBe('86400');
+      expect(capturedHeaders['Urgency']).toBe('high');
       expect(capturedHeaders['Authorization']).toMatch(/^vapid t=/);
       expect(capturedBody).not.toBeNull();
+    });
+
+    it('supports custom urgency header (e.g. normal or low)', async () => {
+      const keys = generateVapidKeys();
+      const clientEcdh = crypto.createECDH('prime256v1');
+      clientEcdh.generateKeys();
+
+      let capturedHeaders: Record<string, string> = {};
+
+      const mockFetch: typeof fetch = async (_input, init) => {
+        // SAFETY: init.headers is a key-value record in our tests
+        capturedHeaders = (init?.headers ?? {}) as Record<string, string>;
+
+        const mockRes: Partial<Response> = {
+          status: 201,
+          ok: true,
+          text: async () => 'Created',
+        };
+
+        // SAFETY: Minimal Response shape for unit test
+        return mockRes as Response;
+      };
+
+      const result = await sendWebPushNotification({
+        subscription: {
+          endpoint: 'https://updates.push.services.mozilla.com/wpush/v2/mock-endpoint',
+          keys: {
+            p256dh: clientEcdh.getPublicKey('base64url'),
+            auth: crypto.randomBytes(16).toString('base64url'),
+          },
+        },
+        payload: {
+          title: 'Custom Urgency Test',
+          body: 'Testing urgency',
+        },
+        urgency: 'normal',
+        vapidPublicKey: keys.publicKey,
+        vapidPrivateKey: keys.privateKey,
+        fetchFn: mockFetch,
+      });
+
+      expect(result.success).toBe(true);
+      expect(capturedHeaders['Urgency']).toBe('normal');
     });
 
     it('identifies expired 404 or 410 subscriptions', async () => {

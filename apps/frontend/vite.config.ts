@@ -3,8 +3,32 @@ import * as fs from 'node:fs';
 import path from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+
+function ensureSynchronousSwPushPlugin(): Plugin {
+  return {
+    name: 'ensure-synchronous-sw-push',
+    apply: 'build',
+    enforce: 'post',
+    closeBundle() {
+      const swPath = path.resolve(__dirname, '../../dist/apps/frontend/sw.js');
+
+      if (fs.existsSync(swPath)) {
+        const originalContent = fs.readFileSync(swPath, 'utf8');
+
+        const strippedContent = originalContent.replace(
+          /importScripts\(["']\/sw-push\.js["']\),?/g,
+          '',
+        );
+
+        const newContent = `importScripts("/sw-push.js");\n${strippedContent}`;
+
+        fs.writeFileSync(swPath, newContent, 'utf8');
+      }
+    },
+  };
+}
 
 function getFrontendVersion(): string {
   if (process.env.FRONTEND_VERSION) {
@@ -146,6 +170,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        inlineWorkboxRuntime: true,
         importScripts: ['/sw-push.js'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
@@ -230,6 +255,7 @@ export default defineConfig({
         ],
       },
     }),
+    ensureSynchronousSwPushPlugin(),
   ],
   resolve: {
     alias: {

@@ -32,6 +32,7 @@ export interface SendWebPushOptions {
   vapidPrivateKey: string;
   vapidSubject?: string;
   ttl?: number;
+  urgency?: 'very-low' | 'low' | 'normal' | 'high';
   fetchFn?: typeof fetch;
 }
 
@@ -167,6 +168,7 @@ export async function sendWebPushNotification(
     vapidPrivateKey,
     vapidSubject = 'mailto:info@heimspielradar.de',
     ttl = 86400,
+    urgency = 'high',
     fetchFn = fetch,
   } = options;
 
@@ -194,6 +196,7 @@ export async function sendWebPushNotification(
       'Content-Type': 'application/octet-stream',
       'Content-Encoding': 'aes128gcm',
       TTL: String(ttl),
+      Urgency: urgency,
       Authorization: authHeader,
     },
     body: new Uint8Array(encryptedBody),

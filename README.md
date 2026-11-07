@@ -75,8 +75,8 @@ heimspielradar/
 
 ### 8. Web-Push Notifications (VAPID) für Tip-Off-Reminder & Spielverlegungen
 - **Zero-Config VAPID-Key-Management:** 3-stufiger Fallback beim Backend-Start: (1) Environment-Variablen `VAPID_PUBLIC_KEY` & `VAPID_PRIVATE_KEY`, (2) Datenbanktabelle `system_settings`, (3) automatische Generierung eines P-256 EC-Keypairs bei Erststart mit permanenter Persistierung in `system_settings`.
-- **Echte Hintergrund-Zustellung:** Service Worker Push-Handler (`apps/frontend/public/sw-push.js` via Workbox `importScripts`) empfängt Push-Payloads auch bei geschlossener App und fokussiert beim Antippen direkt die Spiel-Detailansicht (`/matches/:id`).
-- **Geplante Tip-Off-Reminder:** NestJS-Cronjob (alle 5 Minuten, Zeitzone `Europe/Berlin`) für Erinnerungen `1h`, `2h` vor Spielbeginn oder `1d` am Vorabend um 18:00 Uhr.
+- **Echte Hintergrund-Zustellung & Cold-Start Wakeup:** Synchroner Service Worker Push-Handler auf Zeile 1 von `sw.js` (ohne asynchronen AMD-Loader-Wrapper) und RFC 8030 High-Urgency Header (`Urgency: high`) garantieren sofortige Push-Zustellung und Thread-Wakeup auch bei beendeter PWA. Beim Antippen wird direkt die Spiel-Detailansicht (`/matches/:id`) fokussiert.
+- **Geplante Tip-Off-Reminder:** NestJS-Cronjob (alle 5 Minuten, Zeitzone `Europe/Berlin`) für Erinnerungen `1h`, `2h` vor Spielbeginn oder `1d` am Vorabend um 18:00 Uhr. Gated über `ENABLE_CRON_SYNC` / `DISABLE_CRON` gegen Doppel-Ausführung im Multi-Container-Setup (`heimspielradar-api` vs. `heimspielradar-admin`).
 - **Echtzeit-Meldung bei Spielverlegungen:** Automatische Push-Zustellung bei Termin-, Anwurfzeit- oder Hallenänderungen im DBB-Sync (`ScraperService`) mit intelligentem Snapshot-Vergleich und Zurücksetzen des Erinnerungs-Status bei Verschiebung in die Zukunft.
 - **Auto-Pruning:** Automatisches Bereinigen abgelaufener Abonnements bei Push-Service HTTP `404` / `410`.
 
