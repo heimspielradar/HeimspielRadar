@@ -28,14 +28,14 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Add PR to Kanban Board (Project #2)
+      - name: Add PR to Kanban Board (Project #1)
         run: |
-          gh project item-add 2 --owner TheCodeOne --url "$PR_URL" || true
+          gh project item-add 1 --owner heimspielradar --url "$PR_URL" || true
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Checkout PR branch for lockfile healing
+      - name: Checkout PR branch for lockfile check
         if: |
           steps.metadata.outputs.package-ecosystem == 'npm_and_yarn' ||
           steps.metadata.outputs.package-ecosystem == 'npm'
@@ -52,18 +52,20 @@ jobs:
         with:
           node-version: 22
 
-      - name: Resync package-lock.json with monorepo dependency tree
+      - name: Heal package-lock.json only if npm ci --dry-run fails
         if: |
           steps.metadata.outputs.package-ecosystem == 'npm_and_yarn' ||
           steps.metadata.outputs.package-ecosystem == 'npm'
         run: |
-          npm install --package-lock-only
-          if [ -n "$(git status --porcelain package-lock.json)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore(deps): resync package-lock.json for monorepo peer dependencies"
-            git push
+          if ! npm ci --dry-run --ignore-scripts; then
+            npm install --package-lock-only
+            if [ -n "$(git status --porcelain package-lock.json)" ]; then
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git add package-lock.json
+              git commit -m "chore(deps): resync package-lock.json for monorepo peer dependencies"
+              git push
+            fi
           fi
 
       - name: Enable auto-merge for safe updates (Minor, Patch, or devDependencies)

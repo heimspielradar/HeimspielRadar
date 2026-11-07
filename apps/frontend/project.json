@@ -7,7 +7,9 @@
   "targets": {
     "build": {
       "executor": "nx:run-commands",
-      "outputs": ["{workspaceRoot}/dist/apps/frontend"],
+      "outputs": [
+        "{workspaceRoot}/dist/apps/frontend"
+      ],
       "options": {
         "command": "vite build apps/frontend",
         "cwd": "{workspaceRoot}"
@@ -28,10 +30,7 @@
       }
     },
     "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/apps/frontend"],
       "options": {
-        "jestConfig": "apps/frontend/jest.config.cts",
         "passWithNoTests": true
       }
     }
