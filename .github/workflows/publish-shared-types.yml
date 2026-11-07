@@ -1,0 +1,43 @@
+name: Publish Shared Types Package
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'libs/shared-types/**'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Build & Publish @heimspielradar/shared-types
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Check NPM_TOKEN Availability
+        id: check-token
+        run: |
+          if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "::warning ::NPM_TOKEN secret is not configured in this repository. Skipping npm publish."
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to npmjs
+        if: steps:check-token.outputs.has_token == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cd libs/shared-types
+          npm publish --access public

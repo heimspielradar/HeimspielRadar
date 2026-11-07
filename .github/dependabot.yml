@@ -4,7 +4,7 @@
 # Schedules: Weekly on Fridays at 05:00 (Europe/Berlin)
 # Ecosystems: npm (monorepo root), github-actions, docker
 # Grouping: Thematic groups to minimize PR noise and lockfile churn
-# Protection: Expo & React Native ecosystems frozen to prevent breaking Expo SDK 58
+# Protection: Nx and Webpack tooling frozen for controlled upgrades
 # ==============================================================================
 
 version: 2
@@ -24,20 +24,8 @@ updates:
       prefix: "chore"
       prefix-development: "chore"
       include: "scope"
-    # Freeze Expo and React Native: Expo SDK 58 mandates strict peer dependency locks
+    # Freeze Nx: upgrades must run via `npx nx migrate`
     ignore:
-      - dependency-name: "expo"
-      - dependency-name: "expo-*"
-      - dependency-name: "@expo/*"
-      - dependency-name: "react-native"
-      - dependency-name: "react-native-*"
-      - dependency-name: "@react-native-community/*"
-      - dependency-name: "@react-native-async-storage/*"
-      - dependency-name: "@gorhom/bottom-sheet"
-      - dependency-name: "nativewind"
-      - dependency-name: "babel-preset-expo"
-      - dependency-name: "posthog-react-native"
-      # Freeze Nx: upgrades must run via `npx nx migrate`
       - dependency-name: "nx"
       - dependency-name: "@nx/*"
       # Freeze Webpack tooling: governed strictly by @nx/webpack

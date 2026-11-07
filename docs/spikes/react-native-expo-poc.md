@@ -4,6 +4,7 @@
 **Issues**: [#113](https://github.com/TheCodeOne/HeimspielRadar/issues/113), [#114](https://github.com/TheCodeOne/HeimspielRadar/issues/114), [#115](https://github.com/TheCodeOne/HeimspielRadar/issues/115), [#116](https://github.com/TheCodeOne/HeimspielRadar/issues/116)  
 **SDK**: Expo SDK 54 / React Native 0.76 (Expo Go SDK 58 compatible)  
 **Date**: October 2026  
+**Repository**: Decoupled to [heimspielradar/HeimspielRadar-mobile](https://github.com/heimspielradar/HeimspielRadar-mobile) (see [#237](https://github.com/heimspielradar/HeimspielRadar/issues/237))  
 
 ---
 

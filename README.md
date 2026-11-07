@@ -4,7 +4,7 @@
 > **API:** [**api.heimspielradar.app**](https://api.heimspielradar.app)  
 > Entdecke Amateur-Basketballspiele in deiner Nähe auf einer interaktiven Karte mit Hallen-Navigation, Kiosk-Infos und Offline-Fähigkeit.
 
-Ein modernes Fullstack-Monorepo auf Basis von **Nx**, mit einem **Nest.js**-Backend, einem **React 19 (Vite)** Frontend (PWA) und einer **Expo/React Native** Mobile App.
+Ein modernes Fullstack-Monorepo auf Basis von **Nx**, mit einem **Nest.js**-Backend und einem **React 19 (Vite)** Frontend (PWA). Die native Mobile App befindet sich im dedizierten Repository [**heimspielradar/HeimspielRadar-mobile**](https://github.com/heimspielradar/HeimspielRadar-mobile).
 
 ---
 
@@ -14,10 +14,9 @@ Ein modernes Fullstack-Monorepo auf Basis von **Nx**, mit einem **Nest.js**-Back
 heimspielradar/
 ├── apps/
 │   ├── backend/             # Nest.js API-Server (Port 3000, Prefix: /api) mit Drizzle ORM
-│   ├── frontend/            # React 19 + Vite PWA (Karten- & Listenansicht, Offline-Fähig)
-│   └── mobile/              # Expo / React Native App (NativeWind, iOS/Android)
+│   └── frontend/            # React 19 + Vite PWA (Karten- & Listenansicht, Offline-Fähig)
 ├── libs/
-│   └── shared-types/        # Geteilte TypeScript-Typen & Logik (@sundayleague/shared-types)
+│   └── shared-types/        # Geteilte TypeScript-Typen & Logik (@heimspielradar/shared-types)
 ├── docs/                    # Architekturentscheidungen (ADRs), Deployment- & Setup-Guides
 ├── nx.json                  # Nx-Monorepo Konfiguration
 └── package.json             # NPM-Skripte & Abhängigkeiten
@@ -110,10 +109,9 @@ npm run start:backend
 
 # Frontend (Port 4200, Web: http://localhost:4200)
 npm run start:frontend
-
-# Expo Mobile App
-npm run start:mobile
 ```
+
+> **Native Mobile App:** Die iOS & Android Companion-App wurde in das eigenständige Repository [`heimspielradar/HeimspielRadar-mobile`](https://github.com/heimspielradar/HeimspielRadar-mobile) entkoppelt.
 
 ### 3. Quality Gates, Tests & Linting
 Vor jedem Commit und Pull Request müssen folgende Gates grün sein:
