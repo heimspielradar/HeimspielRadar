@@ -1,3 +1,13 @@
+## 1.0.0 (2026-11-08)
+
+### 🩹 Fixes
+
+- **push:** ensure background push wake-up and gate reminder cron ([#277](https://github.com/heimspielradar/HeimspielRadar/issues/277), [#278](https://github.com/heimspielradar/HeimspielRadar/pull/278))
+
+### ❤️ Thank You
+
+- Dimitrios Kokkonias
+
 ## 0.1.1 (2026-11-07)
 
 ### 🚀 Features

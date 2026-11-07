@@ -1,3 +1,18 @@
+## 1.0.0 (2026-11-08)
+
+### 🚀 Features
+
+- **frontend:** unify map/list view toggle in NavigationDrawer and display dynamic app version ([#271](https://github.com/heimspielradar/HeimspielRadar/issues/271), [#273](https://github.com/heimspielradar/HeimspielRadar/pull/273))
+
+### 🩹 Fixes
+
+- **push:** ensure background push wake-up and gate reminder cron ([#277](https://github.com/heimspielradar/HeimspielRadar/issues/277), [#278](https://github.com/heimspielradar/HeimspielRadar/pull/278))
+- **frontend:** prevent inflated storage total from Chromium opaque response padding ([#270](https://github.com/heimspielradar/HeimspielRadar/issues/270), [#272](https://github.com/heimspielradar/HeimspielRadar/pull/272))
+
+### ❤️ Thank You
+
+- Dimitrios Kokkonias
+
 ## 0.1.1 (2026-11-07)
 
 ### 🚀 Features
