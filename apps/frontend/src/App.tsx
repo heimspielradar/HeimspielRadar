@@ -423,7 +423,6 @@ function MainView({
                   setSelectedMatchId(match.id);
                   actions.setViewMode('map');
                 }}
-                onHoverMatch={(match) => setSelectedMatchId(match.id)}
                 onReportKioskInfo={(match) => setKioskModalMatch(match)}
                 onOpenTopMatchInfo={(match) => setTopMatchModalMatch(match)}
                 isLoading={isLoading}

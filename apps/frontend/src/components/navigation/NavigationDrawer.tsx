@@ -51,13 +51,17 @@ export function NavigationDrawer({
     return null;
   }
 
-  const isMapActive = (currentPath === '/' || currentPath === '') && viewMode === 'map';
-  const isListActive = (currentPath === '/' || currentPath === '') && viewMode === 'list';
+  const isRadarActive = currentPath === '/' || currentPath === '';
+  const isMapActive = isRadarActive && viewMode === 'map';
+  const isListActive = isRadarActive && viewMode === 'list';
   const isStoryActive = currentPath.startsWith('/story') || currentPath.startsWith('/creator');
   const isSettingsActive = currentPath.startsWith('/settings');
   const isAdminActive = currentPath.startsWith('/admin');
 
   const isAdminEnabled = import.meta.env.VITE_ENABLE_ADMIN_UI === 'true';
+
+  const frontendVersion =
+    typeof __FRONTEND_VERSION__ !== 'undefined' ? __FRONTEND_VERSION__ : '0.1.0';
 
   const handleItemClick = (path: string, targetViewMode?: 'map' | 'list') => {
     onNavigate(path, targetViewMode ? { viewMode: targetViewMode } : undefined);
@@ -130,79 +134,89 @@ export function NavigationDrawer({
               Hauptansichten
             </div>
 
-            {/* 1. Kartenansicht */}
-            <button
-              type="button"
-              onClick={() => handleItemClick('/', 'map')}
-              data-testid="nav-item-map"
-              className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition ${
-                isMapActive
+            {/* 1. Spieltagsradar (Karten- & Listenansicht) */}
+            <div
+              className={`rounded-xl border p-3 transition ${
+                isRadarActive
                   ? 'border-primary bg-primary/10 text-primary shadow-xs font-semibold'
                   : 'border-border/60 bg-card/40 text-muted-foreground hover:border-border hover:bg-muted/60 hover:text-foreground'
               }`}
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
+              {/* Card Header: Click to navigate directly to the current radar view */}
+              <button
+                type="button"
+                onClick={() => handleItemClick('/', viewMode)}
+                className="flex w-full items-center justify-between text-left cursor-pointer group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition ${
+                      isRadarActive
+                        ? 'border-primary/40 bg-primary/20 text-primary'
+                        : 'border-border/60 bg-muted/40 text-muted-foreground group-hover:text-foreground'
+                    }`}
+                  >
+                    {viewMode === 'list' ? (
+                      <List className="h-4 w-4" />
+                    ) : (
+                      <MapIcon className="h-4 w-4" />
+                    )}
+                  </div>
+
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-foreground">
+                      Spieltagsradar
+                    </div>
+                    <div className="text-[11px] text-muted-foreground truncate font-normal">
+                      Hallenkarte & Spieleliste
+                    </div>
+                  </div>
+                </div>
+
+                {isRadarActive && (
+                  <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                )}
+              </button>
+
+              {/* Integrated Segmented View Mode Toggle */}
+              <div
+                role="group"
+                aria-label="Radar-Ansicht auswählen"
+                className="mt-2.5 grid grid-cols-2 gap-1 rounded-lg bg-muted/60 p-1 border border-border/50"
+              >
+                <button
+                  type="button"
+                  data-testid="nav-item-map"
+                  aria-label="Kartenansicht"
+                  aria-pressed={isMapActive}
+                  onClick={() => handleItemClick('/', 'map')}
+                  className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 px-2 text-xs font-semibold transition cursor-pointer ${
                     isMapActive
-                      ? 'border-primary/40 bg-primary/20 text-primary'
-                      : 'border-border/60 bg-muted/40 text-muted-foreground'
+                      ? 'bg-card text-foreground shadow-xs font-bold border border-border/40'
+                      : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
                   }`}
                 >
-                  <MapIcon className="h-4 w-4" />
-                </div>
+                  <MapIcon className="h-3.5 w-3.5 shrink-0" />
+                  <span>Karte</span>
+                </button>
 
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-foreground">
-                    Kartenansicht
-                  </div>
-                  <div className="text-[11px] text-muted-foreground truncate">
-                    Interaktive Hallenkarte & Umkreis
-                  </div>
-                </div>
-              </div>
-
-              {isMapActive && (
-                <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
-              )}
-            </button>
-
-            {/* 2. Listenansicht */}
-            <button
-              type="button"
-              onClick={() => handleItemClick('/', 'list')}
-              data-testid="nav-item-list"
-              className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition ${
-                isListActive
-                  ? 'border-primary bg-primary/10 text-primary shadow-xs font-semibold'
-                  : 'border-border/60 bg-card/40 text-muted-foreground hover:border-border hover:bg-muted/60 hover:text-foreground'
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
+                <button
+                  type="button"
+                  data-testid="nav-item-list"
+                  aria-label="Listenansicht"
+                  aria-pressed={isListActive}
+                  onClick={() => handleItemClick('/', 'list')}
+                  className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 px-2 text-xs font-semibold transition cursor-pointer ${
                     isListActive
-                      ? 'border-primary/40 bg-primary/20 text-primary'
-                      : 'border-border/60 bg-muted/40 text-muted-foreground'
+                      ? 'bg-card text-foreground shadow-xs font-bold border border-border/40'
+                      : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
                   }`}
                 >
-                  <List className="h-4 w-4" />
-                </div>
-
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-foreground">
-                    Listenansicht
-                  </div>
-                  <div className="text-[11px] text-muted-foreground truncate">
-                    Chronologische Spieleliste
-                  </div>
-                </div>
+                  <List className="h-3.5 w-3.5 shrink-0" />
+                  <span>Liste</span>
+                </button>
               </div>
-
-              {isListActive && (
-                <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
-              )}
-            </button>
+            </div>
 
             {/* 3. Club Story Hub */}
             <button
@@ -268,7 +282,7 @@ export function NavigationDrawer({
                     Einstellungen
                   </div>
                   <div className="text-[11px] text-muted-foreground truncate">
-                    Karten-Engine, Ansichten & Cache
+                    Ansichten, Benachrichtigungen & Cache
                   </div>
                 </div>
               </div>
@@ -364,7 +378,9 @@ export function NavigationDrawer({
 
           <div className="flex items-center justify-between text-[11px] pt-1">
             <span className="text-foreground/80 font-medium">HeimspielRadar</span>
-            <span className="text-muted-foreground font-mono">v1.0 • Open Source</span>
+            <span className="text-muted-foreground font-mono">
+              v{frontendVersion} • Open Source
+            </span>
           </div>
         </div>
       </div>
