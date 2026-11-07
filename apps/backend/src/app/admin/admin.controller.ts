@@ -20,11 +20,11 @@ import {
 } from '@sundayleague/shared-types';
 import { DRIZZLE_DB, DrizzleDb } from '../database/database.module';
 import { syncRuns } from '../database/schema';
+import { ScraperService } from '../scraper/scraper.service';
+import { TelegramNotifierService } from '../scraper/telegram-notifier.service';
+import { TopMatchScoringService } from '../scraper/top-match-scoring.service';
 import { AdminApiGuard } from './admin-api.guard';
 import { AdminService } from './admin.service';
-import { ScraperService } from './scraper.service';
-import { TelegramNotifierService } from './telegram-notifier.service';
-import { TopMatchScoringService } from './top-match-scoring.service';
 
 function toSyncRunDto(row: typeof syncRuns.$inferSelect | null): SyncRun | null {
   if (!row) {
@@ -52,18 +52,13 @@ function toSyncRunDto(row: typeof syncRuns.$inferSelect | null): SyncRun | null 
 @Controller('admin')
 @UseGuards(AdminApiGuard)
 export class AdminController {
-  private readonly resolvedAdminService: AdminService;
-
   constructor(
     private readonly scraperService: ScraperService,
     private readonly telegramNotifier: TelegramNotifierService,
+    private readonly adminService: AdminService,
     @Optional() @Inject(DRIZZLE_DB) private readonly db: DrizzleDb | null,
-    @Optional() private readonly adminService?: AdminService,
     @Optional() private readonly topMatchScoringService?: TopMatchScoringService
-  ) {
-    this.resolvedAdminService =
-      this.adminService ?? new AdminService(this.db, this.telegramNotifier);
-  }
+  ) {}
 
   @Get('status')
   async getStatus(): Promise<AdminStatusResponse> {
@@ -129,7 +124,7 @@ export class AdminController {
 
   @Get('matches/search')
   async searchMatches(@Query('q') query?: string) {
-    return this.resolvedAdminService.searchMatches(query);
+    return this.adminService.searchMatches(query);
   }
 
   @Get('matches/featured')
@@ -143,7 +138,7 @@ export class AdminController {
     const limit = limitQuery !== undefined ? parseInt(limitQuery, 10) : 25;
     const query = queryParam ?? qParam;
 
-    return this.resolvedAdminService.getFeaturedMatches({
+    return this.adminService.getFeaturedMatches({
       page: isNaN(page) ? 1 : page,
       limit: isNaN(limit) ? 25 : limit,
       query,
@@ -155,7 +150,7 @@ export class AdminController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: FeatureMatchDto
   ) {
-    return this.resolvedAdminService.featureMatch(id, dto);
+    return this.adminService.featureMatch(id, dto);
   }
 
   @Post('top-matches/calculate')

@@ -4,12 +4,12 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PgDialect } from 'drizzle-orm/pg-core';
+import { DRIZZLE_DB } from '../database/database.module';
+import { ScraperService } from '../scraper/scraper.service';
+import { TelegramNotifierService } from '../scraper/telegram-notifier.service';
 import { AdminApiGuard } from './admin-api.guard';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
-import { ScraperService } from './scraper.service';
-import { TelegramNotifierService } from './telegram-notifier.service';
-import { DRIZZLE_DB } from '../database/database.module';
 
 describe('AdminController', () => {
   let controller: AdminController;
@@ -410,6 +410,37 @@ describe('AdminController', () => {
 
       expect(res.success).toBe(false);
       expect(res.message).toBe('TopMatchScoringService not available');
+    });
+
+    it('calculates top matches when TopMatchScoringService is available', async () => {
+      // SAFETY: Partial test double matching TopMatchScoringService contract
+      const mockScoringService = {
+        calculateTopMatches: jest.fn().mockResolvedValue({
+          totalMatchesEvaluated: 15,
+          topMatchesCount: 3,
+          topMatchCandidateIds: [1, 2, 3],
+          durationMs: 120,
+        }),
+      } as any;
+
+      const ctrl = new AdminController(
+        mockScraperService,
+        mockTelegramNotifier,
+        new AdminService(mockDb, mockTelegramNotifier),
+        mockDb,
+        mockScoringService
+      );
+
+      const res = await ctrl.calculateTopMatches();
+
+      expect(res.success).toBe(true);
+      expect(res.summary).toEqual({
+        totalMatchesEvaluated: 15,
+        topMatchesCount: 3,
+        topMatchCandidateIds: [1, 2, 3],
+        durationMs: 120,
+      });
+      expect(mockScoringService.calculateTopMatches).toHaveBeenCalled();
     });
   });
 });

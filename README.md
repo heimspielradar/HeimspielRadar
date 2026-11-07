@@ -80,11 +80,15 @@ heimspielradar/
 - **Echtzeit-Meldung bei Spielverlegungen:** Automatische Push-Zustellung bei Termin-, Anwurfzeit- oder Hallenänderungen im DBB-Sync (`ScraperService`) mit intelligentem Snapshot-Vergleich und Zurücksetzen des Erinnerungs-Status bei Verschiebung in die Zukunft.
 - **Auto-Pruning:** Automatisches Bereinigen abgelaufener Abonnements bei Push-Service HTTP `404` / `410`.
 
-### 8. Moderations- & Submissions-Lifecycle (`SubmissionsModule`)
+### 9. Moderations- & Submissions-Lifecycle (`SubmissionsModule`)
 - **Entkoppelte Submissions-Architektur:** Crowd-gesourcte Kiosk-, Eintritts- und Hallenmeldungen laufen über das dedizierte `SubmissionsModule` (`/api/submissions`), getrennt vom reinen Match-Query-Service (`MatchesService`).
 - **One-Click Moderation & Benachrichtigung:** Automatische Moderations-Alerts an Moderatoren via Telegram mit 1-Klick Token-Freigabe (`/api/submissions/:id/approve` bzw. `/reject`) und direkter Freischaltung geprüfter Infos.
 
-### 9. PWA Install-UX, App-Shortcuts, Homescreen-Badge & iOS Safe-Area
+### 10. Dedizierte Administration & Kurations-Seam (`AdminModule`)
+- **Entkoppelte Administration:** Featured-Matches-Kuration, manueller Sync-Trigger (`/api/admin/sync/trigger`), Failure-Retry, Top-Match-Berechnung und Systemstatus (`/api/admin/status`) sind vollständig im dedizierten `AdminModule` (`apps/backend/src/app/admin/`) gekapselt.
+- **Saubere DI & Auth-Seam:** `AdminController` nutzt standardisierte NestJS-Constructor-DI ohne manuelle Fallback-Instantiierung; administrative Token-Validierung ist in `admin-auth.util.ts` isoliert. Das Daten-Ingestion-Modul (`ScraperModule`) ist auf DBB-Client, Nominatim-Geocoding und Scheduler getrimmt.
+
+### 11. PWA Install-UX, App-Shortcuts, Homescreen-Badge & iOS Safe-Area
 - **App-Shortcuts (Quick Actions):** Long-Press auf das Homescreen-Icon öffnet direkte Einstiegspunkte:
   - *Spiele heute* (`/?date=today`)
   - *Dieses Wochenende* (`/?date=weekend`)

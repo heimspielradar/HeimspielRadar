@@ -6,6 +6,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AdminModule } from './admin/admin.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { MatchesModule } from './matches/matches.module';
@@ -46,6 +47,7 @@ const isFrontendDisabled =
     DatabaseModule,
     PushModule,
     ScraperModule,
+    AdminModule,
     MatchesModule,
     SubmissionsModule,
     HealthModule,

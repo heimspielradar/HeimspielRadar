@@ -4,7 +4,6 @@ import {
   Injectable,
   NotFoundException,
   Optional,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { aliasedTable, and, desc, eq } from 'drizzle-orm';
 import type {
@@ -131,37 +130,7 @@ export type VenueModerationPatch = Partial<
   >
 >;
 
-export function verifyAdminToken(token?: string, authHeader?: string): void {
-  const expectedSecret =
-    process.env['ADMIN_API_SECRET'] || process.env['ADMIN_TOKEN'];
-
-  let providedToken = token ? token.trim() : '';
-
-  if (!providedToken && authHeader) {
-    const trimmedHeader = authHeader.trim();
-
-    if (trimmedHeader.startsWith('Bearer ')) {
-      providedToken = trimmedHeader.slice('Bearer '.length).trim();
-    } else {
-      providedToken = trimmedHeader;
-    }
-  }
-
-  if (!expectedSecret) {
-    if (
-      process.env['NODE_ENV'] === 'production' &&
-      process.env['ENABLE_ADMIN_API'] !== 'true'
-    ) {
-      throw new UnauthorizedException('Admin secret is not configured on the server');
-    }
-
-    return;
-  }
-
-  if (!providedToken || providedToken !== expectedSecret) {
-    throw new UnauthorizedException('Invalid or missing admin token');
-  }
-}
+export { verifyAdminToken } from '../admin/admin-auth.util';
 
 @Injectable()
 export class SubmissionsService {

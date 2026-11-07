@@ -1,9 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../database/database.module';
 import { PushModule } from '../push/push.module';
-import { AdminApiGuard } from './admin-api.guard';
-import { AdminController } from './admin.controller';
-import { AdminService } from './admin.service';
 import { DbbClientService } from './dbb-client.service';
 import { GeocoderService } from './geocoder.service';
 import { ScraperAuthGuard } from './scraper-auth.guard';
@@ -15,15 +12,13 @@ import { TopMatchScoringService } from './top-match-scoring.service';
 
 @Module({
   imports: [DatabaseModule, PushModule],
-  controllers: [ScraperController, AdminController],
+  controllers: [ScraperController],
   providers: [
     DbbClientService,
     GeocoderService,
     ScraperService,
     ScraperSchedulerService,
     ScraperAuthGuard,
-    AdminApiGuard,
-    AdminService,
     TelegramNotifierService,
     TopMatchScoringService,
   ],
@@ -33,8 +28,6 @@ import { TopMatchScoringService } from './top-match-scoring.service';
     GeocoderService,
     ScraperSchedulerService,
     ScraperAuthGuard,
-    AdminApiGuard,
-    AdminService,
     TelegramNotifierService,
     TopMatchScoringService,
   ],

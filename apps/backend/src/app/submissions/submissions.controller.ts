@@ -17,8 +17,8 @@ import type {
   UpdateSubmissionDto,
   VenueSubmission,
 } from '@sundayleague/shared-types';
-import { AdminApiGuard } from '../scraper/admin-api.guard';
-import { SubmissionsService, verifyAdminToken } from './submissions.service';
+import { AdminApiGuard, verifyAdminToken } from '../admin';
+import { SubmissionsService } from './submissions.service';
 
 @Controller(['submissions', 'admin/submissions'])
 export class SubmissionsController {
