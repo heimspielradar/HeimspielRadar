@@ -13,9 +13,15 @@ export interface MainRoute {
   matchId?: number | null;
 }
 
+export type SettingsRoutePath =
+  | '/settings'
+  | '/settings/notifications'
+  | '/settings/storage'
+  | '/settings/system';
+
 export interface SettingsRoute {
   name: 'settings';
-  path: '/settings';
+  path: SettingsRoutePath;
 }
 
 export interface MatchDetailRoute {

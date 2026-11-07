@@ -51,11 +51,14 @@ heimspielradar/
 - **MapLibre GL & OpenFreeMap:** Hardwarebeschleunigter WebGL-Vektor-Renderer mit butterweichen 60fps-Pan/Zoom-Gesten, dynamischem Pitch und gestochen scharfen Hallen- und Straßennamen auf jedem Device (ADR-0003). Keine API-Keys oder externe Kosten.
 - **Deep Module `useMapViewModel`:** Zentraler Hook kapselt Koordinatenvalidierung, chronologische Venue-Gruppierung, dynamisches Mercator-Pixel-Clustering, GeoJSON-Suchradiuskreise und Bounding-Box-Fokussierung (`teamQuery`), wodurch der Karten-View-Adapter deklarativ und hochgradig wartbar bleibt.
 
-### 5. Deep Module Routing & History-Backed Overlay Dismissals (`AppRouter`)
-- **Deep Module `AppRouter` (`apps/frontend/src/router/`):** Kapselt deklaratives Routing, Pfad-Parsing (`/`, `/settings`, `/matches/:id`, `/story`, `/story/:id`, `/admin`), Browser-History-Synchronisation und Overlay-Stack-Management hinter einem kompakten Interface (`useRouter`, `useOverlay`).
+### 5. Deep Module Routing (`AppRouter`), History-Backed Overlay Dismissals & Kompaktes Settings-Hub
+- **Deep Module `AppRouter` (`apps/frontend/src/router/`):** Kapselt deklaratives Routing, Pfad-Parsing (`/`, `/settings`, `/settings/notifications`, `/settings/storage`, `/settings/system`, `/matches/:id`, `/story`, `/story/:id`, `/admin`), Browser-History-Synchronisation und Overlay-Stack-Management hinter einem kompakten Interface (`useRouter`, `useOverlay`).
 - **History-Backed Overlay Dismissals (LIFO Stack):** Öffnen von Bottom-Sheets (`VenueModal`), mobilen Filter-Drawern (`FilterBar`), dem Navigations-Drawer oder Dialog-Modals pusht transiente History-States. Beim Betätigen der Android-Hardware-Zurück-Taste oder Browser-Zurück-Geste wird das oberste Overlay sanft zur Basiskarte zurückgeschoben, anstatt die Anwendung zu schließen oder die Seite zu verlassen.
-- **Globaler App-Header & Navigation Drawer:** Einheitliche Navigationsleiste über alle Routen mit Branding, Zurück-Navigation und tastaturbedienbarem Slide-over Drawer (`Escape`, Backdrop-Dismiss, automatische Routenschließung).
-- **Vollwertige Einstellungsseite (`/settings`):** Dedizierte Einstellungsroute mit Radiuskreis-Toggle, Standardansichts-Präferenz, Push-Benachrichtigungen, Offline-Speicher-Reset und DBB-Synchronisationsstatus.
+- **Globaler App-Header & Navigation Drawer:** Einheitliche Navigationsleiste über alle Routen mit Branding, kontextueller Zurück-Navigation und tastaturbedienbarem Slide-over Drawer (`Escape`, Backdrop-Dismiss, automatische Routenschließung).
+- **Kompakter Settings-Hub (`/settings`) & Dedizierte Sub-Views:** Einzeilige Direkt-Optionen (Erscheinungsbild mit Segmented-Pill, Standard-Ansicht, Suchradius-Kreis und App-Installation) gebündelt in einer kompakten Card sowie drei dedizierte Drill-Down Sub-Views:
+  - `/settings/notifications`: Web-Push Berechtigungsstatus, Spiel-Erinnerungen verwalten und `.ics`-Kalenderexporte.
+  - `/settings/storage`: Detaillierte Speicherbelegung (Kombination aus `navigator.storage.estimate()`, LocalStorage und Cache Storage), Offline-Cache leeren und ausstehende Kiosk-Meldungen verwalten.
+  - `/settings/system`: Vollständige System- & Diagnosedaten (Versionsstände, Commits, Backend-Uptime, DBB-Sync und Client-Kontext) in einer direkt geöffneten Ansicht mit 1-Klick Markdown-Export.
 
 ### 6. System / Light / Dark Theme Switcher & Zero-FOUC
 - **3-stufige Theme-Auswahl:** Nutzer können unter `/settings` zwischen **System** (folgt OS `prefers-color-scheme`), **Hell** (Light Mode) und **Dunkel** (Dark Mode) wählen. Standardwert bei Erstaufruf ist `system`.
